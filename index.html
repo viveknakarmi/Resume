@@ -41,9 +41,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>My Interactive Resume City</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -56,14 +56,15 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            touch-action: none;
         }
         #game-container {
             position: relative;
-            width: 90vw; /* Responsive width */
+            width: 90vw;
             max-width: 900px;
-            height: 70vh; /* Responsive height */
-            max-height: 800px;
-            border: 1px solid #00DDEB;
+            height: 70vh;
+            max-height: 600px;
+            border: 2px solid #00DDEB;
             border-radius: 8px;
             overflow: hidden;
             background: rgba(20, 20, 30, 0.9);
@@ -72,6 +73,7 @@
             display: block;
             width: 100%;
             height: 100%;
+            image-rendering: pixelated;
             transition: filter 0.3s ease;
         }
         #game-canvas.blur {
@@ -86,11 +88,11 @@
             background: rgba(20, 20, 30, 0.95);
             border: 1px solid #00DDEB;
             border-radius: 8px;
-            padding: 1rem;
-            width: 80vw;
-            max-width: 500px;
+            padding: 1.5rem;
+            width: 85vw;
+            max-width: 400px;
             min-height: 200px;
-            max-height: 80vh;
+            max-height: 70vh;
             overflow-y: auto;
             z-index: 10;
             box-shadow: 0 0 20px rgba(0, 221, 235, 0.5);
@@ -108,12 +110,13 @@
         }
         .popup h2 {
             color: #FFFFFF;
-            font-size: 1.5rem;
-            margin: 0 0 0.5rem;
+            font-size: 1.8rem;
+            margin: 0 0 0.8rem;
+            font-weight: 700;
         }
         .popup p, .popup li {
             color: #A3BFFA;
-            font-size: 0.9rem;
+            font-size: 1rem;
             line-height: 1.6;
             text-align: left;
         }
@@ -129,11 +132,6 @@
         .popup a:hover {
             text-decoration: underline;
         }
-        .popup p, .popup li, .popup strong, .popup b {
-            background: none !important;
-            color: #A3BFFA !important;
-            font-weight: normal !important;
-        }
         .close-btn {
             position: absolute;
             top: 0.5rem;
@@ -141,7 +139,7 @@
             background: none;
             border: none;
             color: #FFFFFF;
-            font-size: 1.2rem;
+            font-size: 1.5rem;
             cursor: pointer;
             transition: color 0.2s ease;
         }
@@ -151,15 +149,15 @@
         .instructions {
             text-align: center;
             margin-top: 0.5rem;
-            font-size: 0.8rem;
+            font-size: 1rem;
             color: #A3BFFA;
         }
         .progress-bar {
             position: absolute;
             top: 10px;
             right: 10px;
-            width: 150px;
-            height: 15px;
+            width: 120px;
+            height: 12px;
             background: #2A2A3A;
             border: 1px solid #00DDEB;
             border-radius: 4px;
@@ -173,21 +171,21 @@
         .timeline-link, .editor-link {
             position: absolute;
             background: #00DDEB;
-            padding: 0.3rem 0.6rem;
+            padding: 0.4rem 0.8rem;
             border-radius: 4px;
             color: #14141E;
             cursor: pointer;
-            font-size: 0.7rem;
+            font-size: 0.9rem;
             font-weight: 600;
             text-decoration: none;
             transition: background 0.2s ease;
         }
         .timeline-link {
-            top: 30px;
+            top: 10px;
             left: 10px;
         }
         .editor-link {
-            top: 30px;
+            top: 10px;
             right: 10px;
         }
         .timeline-link:hover, .editor-link:hover {
@@ -201,9 +199,9 @@
             background: rgba(20, 20, 30, 0.95);
             border: 1px solid #00DDEB;
             border-radius: 8px;
-            padding: 1rem;
-            width: 80vw;
-            max-width: 500px;
+            padding: 1.5rem;
+            width: 85vw;
+            max-width: 400px;
             z-index: 20;
             opacity: 0;
             transition: transform 0.3s ease, opacity 0.3s ease, top 0.3s ease;
@@ -218,19 +216,18 @@
             position: absolute;
             background: rgba(0, 221, 235, 0.9);
             color: #14141E;
-            padding: 0.3rem;
+            padding: 0.4rem;
             border-radius: 4px;
-            font-size: 0.7rem;
+            font-size: 0.9rem;
             pointer-events: none;
             z-index: 5;
             display: none;
         }
-        /* Touch Controls */
         .controls {
             position: fixed;
-            bottom: 10px;
+            bottom: 15px;
             width: 90vw;
-            max-width: 900px;
+            max-width: 900werpx;
             display: flex;
             justify-content: space-between;
             z-index: 15;
@@ -239,21 +236,21 @@
             background: #00DDEB;
             color: #14141E;
             border: none;
-            border-radius: 5px;
-            padding: 10px;
-            font-size: 1rem;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1.2rem;
             cursor: pointer;
             opacity: 0.8;
-            touch-action: manipulation; /* Prevent scrolling on touch */
+            touch-action: manipulation;
         }
         .control-btn:active {
             opacity: 1;
+            transform: scale(0.95);
         }
         .left-right {
             display: flex;
-            gap: 10px;
+            gap: 15px;
         }
-        /* Hide controls on desktop */
         @media (min-width: 768px) {
             .controls {
                 display: none;
@@ -261,8 +258,10 @@
             .instructions {
                 display: block;
             }
+            .instructions-mobile {
+                display: none;
+            }
         }
-        /* Show touch instructions on mobile */
         @media (max-width: 767px) {
             .instructions {
                 display: none;
@@ -270,9 +269,18 @@
             .instructions-mobile {
                 text-align: center;
                 margin-top: 0.5rem;
-                font-size: 0.8rem;
+                font-size: 0.9rem;
                 color: #A3BFFA;
                 display: block;
+            }
+            #game-container {
+                height: 60vh;
+            }
+            .popup h2 {
+                font-size: 1.6rem;
+            }
+            .popup p, .popup li {
+                font-size: 0.95rem;
             }
         }
     </style>
@@ -296,7 +304,7 @@
         <div class="progress-bar">
             <div class="progress-fill" id="progress-fill"></div>
         </div>
-        <a href="timeline.html" class="timeline-link">View Career Timeline</a>
+        <a href="timeline.html" class="timeline-link">Career Timeline</a>
         <a href="editor.html" class="editor-link">Edit Resume</a>
     </div>
     <div class="instructions">Use Arrow Keys/WASD to move, Space to jump, Enter to interact, Esc to close popups</div>
@@ -333,23 +341,42 @@
             throw new Error('Canvas context not supported');
         }
 
-        // Responsive canvas size
+        // Responsive canvas size with device pixel ratio
         const gameContainer = document.getElementById('game-container');
-        canvas.width = gameContainer.clientWidth;
-        canvas.height = gameContainer.clientHeight;
+        const dpr = window.devicePixelRatio || 1;
+
+        function resizeCanvas() {
+            canvas.width = gameContainer.clientWidth * dpr;
+            canvas.height = gameContainer.clientHeight * dpr;
+            canvas.style.width = `${gameContainer.clientWidth}px`;
+            canvas.style.height = `${gameContainer.clientHeight}px`;
+            ctx.scale(dpr, dpr);
+        }
+
+        resizeCanvas();
+
+        // Handle orientation change
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', resizeCanvas);
 
         // Scale factors for responsive rendering
-        const scaleX = canvas.width / 900;
-        const scaleY = canvas.height / 800;
+        const baseWidth = 900;
+        const baseHeight = 800;
+        let scaleX = canvas.width / dpr / baseWidth;
+        let scaleY = canvas.height / dpr / baseHeight;
+        if (window.innerWidth <= 767) {
+            scaleX *= 1.2;
+            scaleY *= 1.2;
+        }
 
         const player = {
             x: 150 * scaleX,
             y: 626 * scaleY,
-            width: 24 * scaleX,
-            height: 36 * scaleY,
-            speed: 3 * scaleX,
+            width: 24 * scaleX * (window.innerWidth <= 767 ? 1.5 : 1),
+            height: 36 * scaleY * (window.innerWidth <= 767 ? 1.5 : 1),
+            speed: 3 * scaleX * (window.innerWidth <= 767 ? 1.2 : 1),
             vy: 0,
-            jumpPower: -13 * scaleY,
+            jumpPower: -13 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1),
             gravity: 0.5 * scaleY,
             grounded: true
         };
@@ -418,8 +445,8 @@
         ];
         const train = { x: 0, y: 300 * scaleY, width: 100 * scaleX, height: 20 * scaleY, speed: 1.5 * scaleX, color: '#A3BFFA' };
         const stars = Array.from({ length: 50 }, () => ({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height * 0.3,
+            x: Math.random() * gameContainer.clientWidth,
+            y: Math.random() * gameContainer.clientHeight * 0.3,
             radius: Math.random() * 2 * scaleX,
             opacity: Math.random()
         }));
@@ -488,7 +515,7 @@
                     ctx.fill();
                     ctx.stroke();
                     ctx.fillStyle = '#00DDEB';
-                    ctx.fillRect(x + width / 2 - 5 * scaleX, baseY - 5 * scaleY, 10 * scaleX, 5 * scaleY);
+                    ctx.fillRect(x + width / 2 - 5 * scaleX, baseY - 5 * scaleY, 10 * scaleX, (Math.random() * (10 - 5) + 5) * scaleY);
                 } else if (loc.id === 'payroll-team-leader') {
                     ctx.moveTo(x, baseY + 5 * scaleY);
                     ctx.lineTo(x + width / 2, baseY);
@@ -529,8 +556,8 @@
 
                 const rows = height >= 80 * scaleY ? 8 : 6;
                 const cols = 4;
-                const windowWidth = 6 * scaleX;
-                const windowHeight = 4 * scaleY;
+                const windowWidth = 6 * scaleX * (window.innerWidth <= 767 ? 1.3 : 1);
+                const windowHeight = 4 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1);
                 let offsetY = height >= 80 * scaleY ? 16 * scaleY : 12 * scaleY;
                 if (loc.id === 'intern-cerno') offsetY = 14 * scaleY;
                 if (loc.id === 'payroll-officer-consortio') offsetY = 10 * scaleY;
@@ -618,7 +645,7 @@
         function drawSign(sign) {
             ctx.fillStyle = '#00DDEB';
             ctx.fillRect(sign.x, sign.y, sign.width, sign.height);
-            ctx.font = `${8 * scaleX}px Inter`;
+            ctx.font = `${12 * scaleX}px Inter`;
             ctx.fillStyle = '#FFFFFF';
             ctx.strokeStyle = '#00DDEB';
             ctx.lineWidth = 0.5 * scaleX;
@@ -665,17 +692,21 @@
         const jumpBtn = document.getElementById('jump-btn');
         const interactBtn = document.getElementById('interact-btn');
 
-        leftBtn.addEventListener('touchstart', () => keys['a'] = true);
+        leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['a'] = true; });
         leftBtn.addEventListener('touchend', () => keys['a'] = false);
-        rightBtn.addEventListener('touchstart', () => keys['d'] = true);
+        rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['d'] = true; });
         rightBtn.addEventListener('touchend', () => keys['d'] = false);
-        jumpBtn.addEventListener('touchstart', () => {
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
             if (player.grounded) {
                 player.vy = player.jumpPower;
                 player.grounded = false;
             }
         });
-        interactBtn.addEventListener('touchstart', () => checkInteraction());
+        interactBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            checkInteraction();
+        });
 
         function update() {
             try {
@@ -724,7 +755,7 @@
                     }
                 });
 
-                player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+                player.x = Math.max(0, Math.min(gameContainer.clientWidth - player.width, player.x));
                 player.y = Math.min(650 * scaleY - player.height, player.y);
 
                 pulseOpacity += pulseDirection * 0.02;
@@ -732,15 +763,15 @@
 
                 cars.forEach(car => {
                     car.x += car.speed;
-                    if (car.x > canvas.width) car.x = -car.width;
-                    if (car.x + car.width < 0) car.x = canvas.width;
+                    if (car.x > gameContainer.clientWidth) car.x = -car.width;
+                    if (car.x + car.width < 0) car.x = gameContainer.clientWidth;
                 });
                 train.x += train.speed;
-                if (train.x > canvas.width) train.x = -train.width;
+                if (train.x > gameContainer.clientWidth) train.x = -train.width;
                 undergroundTrains.forEach(train => {
                     train.x += train.speed;
-                    if (train.x > canvas.width) train.x = -train.width;
-                    if (train.x + train.width < 0) train.x = canvas.width;
+                    if (train.x > gameContainer.clientWidth) train.x = -train.width;
+                    if (train.x + train.width < 0) train.x = gameContainer.clientWidth;
                 });
                 stars.forEach(star => {
                     star.opacity = (star.opacity + 0.01) % 1;
@@ -749,14 +780,14 @@
                 const isPopupActive = Array.from(document.querySelectorAll('.popup, .welcome-popup')).some(p => p.classList.contains('active'));
                 canvas.classList.toggle('blur', isPopupActive);
 
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                const gradient = ctx.createLinearGradient(0, 0, 0, gameContainer.clientHeight);
                 gradient.addColorStop(0, '#14141E');
                 gradient.addColorStop(0.8, '#1E3A5F');
                 gradient.addColorStop(1, '#3A3A4A');
                 ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(0, 0, gameContainer.clientWidth, gameContainer.clientHeight);
 
                 stars.forEach(star => {
                     ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
@@ -768,9 +799,9 @@
                 distantBuildings.forEach(drawDistantBuilding);
 
                 ctx.fillStyle = '#3A3A4A';
-                ctx.fillRect(0, 290 * scaleY, canvas.width, 5 * scaleY);
+                ctx.fillRect(0, 290 * scaleY, gameContainer.clientWidth, 5 * scaleY);
                 ctx.fillStyle = '#00DDEB';
-                ctx.fillRect(0, 295 * scaleY, canvas.width, 5 * scaleY);
+                ctx.fillRect(0, 295 * scaleY, gameContainer.clientWidth, 5 * scaleY);
 
                 drawTrain(train);
 
@@ -839,7 +870,7 @@
 
                 signs.forEach(drawSign);
 
-                ctx.font = `${14 * scaleX}px Inter`;
+                ctx.font = `${16 * scaleX}px Inter`;
                 ctx.fillStyle = '#FFFFFF';
                 ctx.strokeStyle = '#00DDEB';
                 ctx.lineWidth = 0.5 * scaleX;
@@ -851,18 +882,18 @@
                 ctx.strokeText('2023–Present', 10 * scaleX, 220 * scaleY);
 
                 ctx.fillStyle = 'rgba(60, 60, 80, 0.8)';
-                ctx.fillRect(0, 650 * scaleY, canvas.width, 150 * scaleY);
+                ctx.fillRect(0, 650 * scaleY, gameContainer.clientWidth, 150 * scaleY);
                 ctx.fillStyle = '#3A3A4A';
-                ctx.fillRect(0, 650 * scaleY, canvas.width, 150 * scaleY);
+                ctx.fillRect(0, 650 * scaleY, gameContainer.clientWidth, 150 * scaleY);
                 for (let y = 700 * scaleY; y <= 740 * scaleY; y += 20 * scaleY) {
                     ctx.fillStyle = '#2A2A3A';
-                    ctx.fillRect(0, y - 5 * scaleY, canvas.width, 2 * scaleY);
+                    ctx.fillRect(0, y - 5 * scaleY, gameContainer.clientWidth, 2 * scaleY);
                     ctx.fillStyle = '#FFC107';
-                    ctx.fillRect(0, y - 3 * scaleY, canvas.width, 2 * scaleY);
+                    ctx.fillRect(0, y - 3 * scaleY, gameContainer.clientWidth, 2 * scaleY);
                 }
                 undergroundTrains.forEach(drawUndergroundTrain);
                 undergroundSigns.forEach(drawSign);
-                for (let x = 50 * scaleX; x < canvas.width; x += 100 * scaleX) {
+                for (let x = 50 * scaleX; x < gameContainer.clientWidth; x += 100 * scaleX) {
                     ctx.fillStyle = '#FFFFE0';
                     ctx.beginPath();
                     ctx.arc(x, 670 * scaleY, 5 * scaleX, 0, Math.PI * 2);
@@ -871,7 +902,7 @@
 
                 cars.forEach(drawCar);
 
-                ctx.font = `${16 * scaleX}px Inter`;
+                ctx.font = `${18 * scaleX}px Inter`;
                 ctx.fillStyle = '#FFFFFF';
                 ctx.strokeStyle = '#00DDEB';
                 ctx.lineWidth = 1 * scaleX;
