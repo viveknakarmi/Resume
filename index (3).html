@@ -1,0 +1,861 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Interactive Resume City</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(180deg, #14141E, #1E3A5F);
+            color: #FFFFFF;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 900px;
+            height: 800px;
+            border: 1px solid #00DDEB;
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(20, 20, 30, 0.9);
+        }
+        #game-canvas {
+            display: block;
+            transition: filter 0.3s ease;
+        }
+        #game-canvas.blur {
+            filter: blur(3px);
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            top: 70%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(20, 20, 30, 0.95);
+            border: 1px solid #00DDEB;
+            border-radius: 8px;
+            padding: 2rem;
+            width: 500px;
+            min-height: 300px;
+            max-height: 600px;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(0, 221, 235, 0.5);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease, top 0.3s ease;
+        }
+        .popup.active {
+            display: block;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        .popup:hover {
+            transform: translate(-50%, -50%) scale(1.02);
+        }
+        .popup h2 {
+            color: #FFFFFF;
+            font-size: 1.8rem;
+            margin: 0 0 0.5rem;
+        }
+        .popup p, .popup li {
+            color: #A3BFFA;
+            font-size: 1rem;
+            line-height: 1.6;
+            text-align: left;
+        }
+        .popup ul {
+            list-style: disc;
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+        .popup a {
+            color: #00DDEB;
+            text-decoration: none;
+        }
+        .popup a:hover {
+            text-decoration: underline;
+        }
+        .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #FFFFFF;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        .close-btn:hover {
+            color: #00DDEB;
+        }
+        .instructions {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #A3BFFA;
+        }
+        .progress-bar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            height: 20px;
+            background: #2A2A3A;
+            border: 1px solid #00DDEB;
+            border-radius: 4px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #00DDEB;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .timeline-link {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            background: #00DDEB;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            color: #14141E;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s ease;
+        }
+        .timeline-link:hover {
+            background: #00B7C2;
+        }
+        .editor-link {
+            position: absolute;
+            top: 40px;
+            right: 10px;
+            background: #00DDEB;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            color: #14141E;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s ease;
+        }
+        .editor-link:hover {
+            background: #00B7C2;
+        }
+        .welcome-popup {
+            position: fixed;
+            top: 70%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(20, 20, 30, 0.95);
+            border: 1px solid #00DDEB;
+            border-radius: 8px;
+            padding: 2rem;
+            width: 500px;
+            z-index: 20;
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease, top 0.3s ease;
+        }
+        .welcome-popup.active {
+            display: block;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 221, 235, 0.9);
+            color: #14141E;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="900" height="800"></canvas>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <a href="timeline.html" class="timeline-link">View Career Timeline</a>
+        <a href="editor.html" class="editor-link">Edit Resume</a>
+    </div>
+    <div class="instructions">Use Arrow Keys/WASD to move, Space to jump, Enter to interact, Esc to close popups</div>
+
+    <!-- Welcome Popup -->
+    <div class="welcome-popup active" id="welcome-popup">
+        <button class="close-btn" onclick="closePopup('welcome-popup')">×</button>
+        <h2>Welcome to My Resume City!</h2>
+        <p>Passionate about data analytics and payroll efficiency. Skilled in SQL, Looker Studio, and VBA. Explore my career in this vibrant city! Use Arrow Keys or WASD to move, Space to jump on platforms, buildings, or vehicles, and Enter to view details. The current role pulses with energy. Press Esc to close popups. Follow the glowing timeline across 5-year levels (2013–2017 at the bottom, 2018–2022 in the middle, 2023–Present at the top). Below lies a bustling underground metro—observe its vibrancy! Check out my <a href="https://linkedin.com/in/yourprofile" target="_blank">LinkedIn</a> or view the Career Timeline link!</p>
+        <div class="btn" onclick="closePopup('welcome-popup')">Start Exploring</div>
+    </div>
+
+    <!-- Dynamic Popups Container -->
+    <div id="popups-container"></div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('Canvas context not supported');
+            throw new Error('Canvas context not supported');
+        }
+
+        // Player (larger size)
+        const player = {
+            x: 150,
+            y: 626, // Start on bottom layer (2013–2017)
+            width: 24, // Increased from 16
+            height: 36, // Increased from 24
+            speed: 3,
+            vy: 0,
+            jumpPower: -13,
+            gravity: 0.5,
+            grounded: true
+        };
+
+        // Platforms (same positions, but layers reordered)
+        const platforms = [
+            { x: 0, y: 650, width: 900, height: 20 }, // Bottom layer (2013–2017)
+            { x: 100, y: 450, width: 700, height: 20 }, // Middle layer (2018–2022)
+            { x: 0, y: 250, width: 700, height: 20 }, // Top layer (2023–Present)
+            { x: 100, y: 600, width: 50, height: 10 }, // Decorative platforms (adjusted for new layers)
+            { x: 750, y: 600, width: 50, height: 10 },
+            { x: 100, y: 400, width: 50, height: 10 },
+            { x: 750, y: 400, width: 50, height: 10 }
+        ];
+
+        // Signs (adjusted for new layer positions and raised further)
+        const signs = [
+            // Bottom layer (2013–2017, y=650)
+            { x: 190, y: 510, width: 20, height: 10, label: 'Intern at Cerno' },
+            { x: 390, y: 510, width: 20, height: 10, label: 'Intern Accountant' },
+            { x: 590, y: 510, width: 20, height: 10, label: 'Payroll Officer RASHAYS' },
+            // Middle layer (2018–2022, y=450)
+            { x: 590, y: 350, width: 20, height: 10, label: 'Payroll Officer Consortio' },
+            { x: 390, y: 340, width: 20, height: 10, label: 'Payroll Team Leader' },
+            { x: 190, y: 330, width: 20, height: 10, label: 'Payroll Manager' },
+            // Top layer (2023–Present, y=250)
+            { x: 190, y: 150, width: 20, height: 10, label: 'Data Manager' },
+            { x: 390, y: 150, width: 20, height: 10, label: 'Education' },
+            { x: 590, y: 150, width: 20, height: 10, label: 'Skills' },
+            { x: 790, y: 150, width: 20, height: 10, label: 'Projects' }
+        ];
+
+        // Load locations (reordered for career ladder: bottom to top)
+        const savedLocations = JSON.parse(localStorage.getItem('resumeLocations')) || [
+            // Bottom layer: 2013–2017 (y=650, left-to-right)
+            { id: 'intern-cerno', title: 'Intern at Cerno', content: '<p>Mar 2013 – Jun 2013 | St. Leonards, Sydney</p><p>Responsibilities:</p><ul><li>Compared bank statements with Navision journals.</li><li>Checked invoice status and payment details.</li><li>Assisted with financial data verification.</li><li>Supported team with administrative tasks.</li></ul>', startYear: 2013, endYear: 2013, layer: 'bottom', x: 200, y: 610, width: 40, height: 40, groundY: 650, timelineOrder: 1 },
+            { id: 'intern-accountant', title: 'Intern Assistant Accountant', content: '<p>Feb 2015 – Nov 2015 | Surry Hills, Sydney</p><p>Responsibilities:</p><ul><li>Managed accounts payable/receivable using MYOB.</li><li>Reconciled bank accounts and payroll sheets.</li><li>Prepared Business Activity Statements (BAS).</li><li>Performed cost center analysis with Excel.</li></ul>', startYear: 2015, endYear: 2015, layer: 'bottom', x: 400, y: 600, width: 40, height: 50, groundY: 650, timelineOrder: 2 },
+            { id: 'payroll-officer-rashays', title: 'Payroll Officer at RASHAYS', content: '<p>Nov 2015 – Oct 2018 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Processed payroll for restaurant staff accurately.</li><li>Maintained employee records and leave balances.</li><li>Ensured compliance with payroll regulations.</li><li>Generated reports using Excel for management.</li></ul>', startYear: 2015, endYear: 2018, layer: 'bottom', x: 600, y: 590, width: 40, height: 60, groundY: 650, timelineOrder: 3 },
+            // Middle layer: 2018–2022 (y=450, right-to-left)
+            { id: 'payroll-officer-consortio', title: 'Payroll Officer at Consortio', content: '<p>Oct 2018 – Mar 2021 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Ensured accurate salary disbursement and compliance.</li><li>Managed overpayment recovery and leave records.</li><li>Prepared reports within regulatory timeframes.</li><li>Used Excel and payroll systems for data tasks.</li></ul>', startYear: 2018, endYear: 2021, layer: 'middle', x: 600, y: 410, width: 40, height: 40, groundY: 450, timelineOrder: 4 },
+            { id: 'payroll-team-leader', title: 'Payroll Team Leader at Consortio', content: '<p>Mar 2021 – Nov 2021 | Australia</p><p>Responsibilities:</p><ul><li>Led payroll team to ensure timely processing.</li><li>Implemented process improvements for efficiency.</li><li>Ensured data accuracy across payroll systems.</li><li>Supported compliance with payroll regulations.</li></ul>', startYear: 2021, endYear: 2021, layer: 'middle', x: 400, y: 400, width: 40, height: 50, groundY: 450, timelineOrder: 5 },
+            { id: 'payroll-manager', title: 'Payroll Manager at Consortio', content: '<p>Nov 2021 – Jun 2023 | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Oversaw payroll processing for accuracy and compliance.</li><li>Developed reports using SQL and Excel for insights.</li><li>Streamlined payroll workflows with VBA automation.</li><li>Trained team on payroll systems and data tools.</li></ul>', startYear: 2021, endYear: 2023, layer: 'middle', x: 200, y: 390, width: 40, height: 60, groundY: 450, timelineOrder: 6 },
+            // Top layer: 2023–Present (y=250)
+            { id: 'data-manager', title: 'Data Manager at Consortio', content: '<p>Jul 2023 – Present | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Led data strategy and analytics initiatives.</li><li>Built and maintained dashboards using Looker Studio.</li><li>Managed large datasets with SQL and Google BigQuery.</li><li>Collaborated with teams to drive data-driven decisions.</li></ul>', startYear: 2023, endYear: 'Present', layer: 'top', x: 200, y: 170, width: 60, height: 80, groundY: 250, timelineOrder: 7, isPresent: true },
+            // Non-temporal (top layer, off timeline)
+            { id: 'education', title: 'Education', content: '<p>Academic Background:</p><ul><li>Diploma in Accounting, Sydney TAFE, 2013.</li><li>Completed courses in SQL and Data Visualization.</li><li>Certified in Advanced Excel and VBA Programming.</li><li>Studied Business Analytics short course, UNSW, 2020.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 400, y: 210, width: 40, height: 40, groundY: 250 },
+            { id: 'skills', title: 'Skills', content: '<p>Core Competencies:</p><ul><li>Data Analysis & Modeling</li><li>SQL & Google BigQuery</li><li>Looker Studio & Data Visualization</li><li>Microsoft Excel & VBA</li><li>Payroll Services & Data Management</li></ul>', startYear: null, endYear: null, layer: 'top', x: 600, y: 210, width: 40, height: 40, groundY: 250 },
+            { id: 'projects', title: 'Projects', content: '<p>Key Achievements in Data Analytics:</p><ul><li>Built a dashboard app for payroll insights using Looker Studio.</li><li>Automated data cleaning with VBA scripts for Consortio.</li><li>Designed SQL queries for real-time reporting at RASHAYS.</li><li>Created predictive models for workforce planning.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 800, y: 210, width: 40, height: 40, groundY: 250 },
+            { id: 'achievements', title: 'Achievements', content: '<p>Career Highlights:</p><ul><li>Certified Data Analyst, 2023.</li><li>Streamlined payroll systems at Consortio, saving 20% time.</li><li>Completed over 100 dashboards for business insights.</li><li>Mentored payroll team to improve accuracy.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 800, y: 210, width: 40, height: 40, groundY: 250, locked: true }
+        ];
+
+        // Initialize locations
+        const locations = savedLocations.map(loc => ({
+            ...loc,
+            radiating: false,
+            pulseVisited: false,
+            draw: drawBuilding,
+            tooltip: loc.startYear ? `${loc.startYear}${loc.endYear === 'Present' ? '–Present' : loc.endYear ? '–' + loc.endYear : ''}: ${loc.title}` : loc.title
+        }));
+
+        // Generate popups dynamically
+        const popupsContainer = document.getElementById('popups-container');
+        locations.forEach(loc => {
+            const popup = document.createElement('div');
+            popup.className = 'popup';
+            popup.id = loc.id + '-popup';
+            popup.innerHTML = `
+                <button class="close-btn" onclick="closePopup('${loc.id}-popup')">×</button>
+                <h2>${loc.title}</h2>
+                ${loc.content}
+            `;
+            popupsContainer.appendChild(popup);
+        });
+
+        // Background elements
+        const cars = [
+            { x: 0, y: 780, width: 40, height: 15, speed: 2, color: '#00DDEB' },
+            { x: 300, y: 780, width: 40, height: 15, speed: -1.5, color: '#A3BFFA' }
+        ];
+        const train = { x: 0, y: 300, width: 100, height: 20, speed: 1.5, color: '#A3BFFA' };
+        const stars = Array.from({ length: 50 }, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height * 0.3,
+            radius: Math.random() * 2,
+            opacity: Math.random()
+        }));
+        const distantBuildings = [
+            { x: 0, y: 600, width: 30, height: 50 },
+            { x: 50, y: 600, width: 30, height: 60 },
+            { x: 100, y: 600, width: 30, height: 40 },
+            { x: 800, y: 600, width: 30, height: 50 }
+        ];
+        const undergroundTrains = [
+            { x: 0, y: 700, width: 80, height: 20, speed: 1 },
+            { x: 200, y: 720, width: 80, height: 20, speed: -0.8 },
+            { x: 400, y: 740, width: 80, height: 20, speed: 0.6 }
+        ];
+        const undergroundSigns = [
+            { x: 100, y: 680, width: 20, height: 10, label: 'Metro' },
+            { x: 300, y: 680, width: 20, height: 10, label: 'Station' },
+            { x: 500, y: 680, width: 20, height: 10, label: 'Exit' }
+        ];
+
+        // Draw functions
+        function drawBuilding(x, y, width, height, tooltip, groundY, isPresent, loc) {
+            const baseY = groundY - height;
+            ctx.save();
+            const gradient = ctx.createLinearGradient(x, baseY, x, baseY + height);
+            gradient.addColorStop(0, '#2A2A3A');
+            gradient.addColorStop(1, '#3A3A4A');
+            ctx.fillStyle = gradient;
+            ctx.strokeStyle = '#00DDEB';
+            ctx.lineWidth = 0.5;
+
+            try {
+                ctx.beginPath();
+                if (loc.id === 'intern-cerno') {
+                    ctx.moveTo(x, baseY);
+                    ctx.lineTo(x + width, baseY);
+                    ctx.lineTo(x + width, baseY + height);
+                    ctx.lineTo(x, baseY + height);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = '#00DDEB';
+                    ctx.fillRect(x + width / 2 - 2, baseY - 10, 4, 10);
+                } else if (loc.id === 'intern-accountant') {
+                    ctx.moveTo(x, baseY);
+                    ctx.lineTo(x + width, baseY + 10);
+                    ctx.lineTo(x + width, baseY + height);
+                    ctx.lineTo(x, baseY + height);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (loc.id === 'payroll-officer-rashays') {
+                    ctx.moveTo(x, baseY + 20);
+                    ctx.lineTo(x, baseY + height);
+                    ctx.lineTo(x + width, baseY + height);
+                    ctx.lineTo(x + width, baseY + 20);
+                    ctx.quadraticCurveTo(x + width / 2, baseY, x, baseY + 20);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (loc.id === 'payroll-officer-consortio') {
+                    ctx.moveTo(x, baseY);
+                    ctx.lineTo(x + width, baseY);
+                    ctx.lineTo(x + width, baseY + height);
+                    ctx.lineTo(x, baseY + height);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = '#00DDEB';
+                    ctx.fillRect(x + width / 2 - 5, baseY - 5, 10, 5);
+                } else if (loc.id === 'payroll-team-leader') {
+                    ctx.moveTo(x, baseY + 5);
+                    ctx.lineTo(x + width / 2, baseY);
+                    ctx.lineTo(x + width, baseY + 5);
+                    ctx.lineTo(x + width, baseY + height);
+                    ctx.lineTo(x, baseY + height);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (loc.id === 'payroll-manager') {
+                    ctx.moveTo(x + 5, baseY);
+                    ctx.lineTo(x + width - 5, baseY);
+                    ctx.lineTo(x + width, baseY + height);
+                    ctx.lineTo(x, baseY + height);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (loc.id === 'data-manager') {
+                    ctx.moveTo(x, baseY + 20);
+                    ctx.lineTo(x, baseY + height);
+                    ctx.lineTo(x + width, baseY + height);
+                    ctx.lineTo(x + width, baseY + 20);
+                    ctx.quadraticCurveTo(x + width / 2, baseY - 10, x, baseY + 20);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    ctx.moveTo(x, baseY);
+                    ctx.lineTo(x + width, baseY);
+                    ctx.lineTo(x + width, baseY + height);
+                    ctx.lineTo(x, baseY + height);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = '#00DDEB';
+                    ctx.fillRect(x + width / 2 - 3, baseY - 5, 6, 5);
+                }
+
+                const rows = height >= 80 ? 8 : 6;
+                const cols = 4;
+                const windowWidth = 6;
+                const windowHeight = 4;
+                let offsetY = height >= 80 ? 16 : 12;
+                if (loc.id === 'intern-cerno') offsetY = 14;
+                if (loc.id === 'payroll-officer-consortio') offsetY = 10;
+                if (loc.id === 'payroll-officer-rashays') offsetY = 20;
+                const offsetX = (width - cols * windowWidth - (cols - 1) * 2) / 2;
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        let yPos = baseY + offsetY + i * (windowHeight + 2);
+                        if (loc.id === 'intern-accountant') {
+                            yPos += ((cols - 1 - j) / (cols - 1)) * 8;
+                        } else if (loc.id === 'payroll-officer-rashays' && i === 0) {
+                            yPos += Math.abs(j - 1.5) * 3;
+                        } else if (loc.id === 'payroll-manager') {
+                            const taperOffset = (cols - 1 - j) < cols / 2 ? (cols - 1 - j) : j;
+                            yPos += (taperOffset * 1.5);
+                        }
+                        if (yPos + windowHeight <= groundY) {
+                            ctx.fillStyle = '#00DDEB';
+                            ctx.fillRect(
+                                x + offsetX + j * (windowWidth + 2),
+                                yPos,
+                                windowWidth,
+                                windowHeight
+                            );
+                            ctx.strokeStyle = '#FFFFFF';
+                            ctx.lineWidth = 0.5;
+                            ctx.strokeRect(
+                                x + offsetX + j * (windowWidth + 2),
+                                yPos,
+                                windowWidth,
+                                windowHeight
+                            );
+                        }
+                    }
+                }
+
+                if (isPresent) {
+                    ctx.strokeStyle = '#00DDEB';
+                    ctx.globalAlpha = pulseOpacity;
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x - 2, baseY - 2, width + 4, height + 4);
+                    ctx.globalAlpha = 1;
+                }
+                if (loc.pulseVisited && !isPresent) {
+                    ctx.strokeStyle = '#00DDEB';
+                    ctx.globalAlpha = pulseOpacity;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x - 1, baseY - 1, width + 2, height + 2);
+                    ctx.globalAlpha = 1;
+                }
+            } catch (error) {
+                console.error(`Error drawing building ${loc.id}:`, error);
+                ctx.fillRect(x, baseY, width, height);
+                ctx.strokeRect(x, baseY, width, height);
+            }
+            ctx.restore();
+        }
+
+        function drawCar(car) {
+            ctx.fillStyle = car.color;
+            ctx.fillRect(car.x, car.y, car.width, car.height);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(car.x + 5, car.y + 2, 8, 5);
+            ctx.fillRect(car.x + 27, car.y + 2, 8, 5);
+        }
+
+        function drawTrain(train) {
+            ctx.fillStyle = train.color;
+            ctx.fillRect(train.x, train.y, train.width, train.height);
+            ctx.fillStyle = '#FFFFFF';
+            for (let i = 0; i < 3; i++) {
+                ctx.fillRect(train.x + 10 + i * 30, train.y + 2, 10, 10);
+            }
+        }
+
+        function drawUndergroundTrain(train) {
+            ctx.fillStyle = '#FF8C00';
+            ctx.fillRect(train.x, train.y, train.width, train.height);
+            ctx.fillStyle = '#FFFFE0';
+            for (let i = 0; i < 2; i++) {
+                ctx.fillRect(train.x + 10 + i * 30, train.y + 2, 10, 10);
+            }
+        }
+
+        function drawSign(sign) {
+            ctx.fillStyle = '#00DDEB';
+            ctx.fillRect(sign.x, sign.y, sign.width, sign.height);
+            ctx.font = '8px Inter';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.strokeStyle = '#00DDEB';
+            ctx.lineWidth = 0.5;
+            ctx.fillText(sign.label, sign.x + 2, sign.y + 8);
+            ctx.strokeText(sign.label, sign.x + 2, sign.y + 8);
+            // Log sign positions for debugging
+            console.log(`Drawing sign: ${sign.label} at x=${sign.x}, y=${sign.y}`);
+        }
+
+        function drawDistantBuilding(building) {
+            ctx.fillStyle = '#1E3A5F';
+            ctx.fillRect(building.x, building.y - building.height, building.width, building.height);
+        }
+
+        // Game state
+        let xp = 0;
+        const visited = new Set();
+        let achievementsUnlocked = false;
+        let pulseOpacity = 0.4;
+        let pulseDirection = 1;
+        let nearestLoc = null;
+        let minDistance = Infinity;
+
+        // Tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        document.body.appendChild(tooltip);
+
+        // Input handling
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.code === 'Space' && player.grounded) {
+                player.vy = player.jumpPower;
+                player.grounded = false;
+            }
+            if (e.code === 'Enter') {
+                checkInteraction();
+            }
+            if (e.code === 'Escape') closeAllPopups();
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        function update() {
+            try {
+                // Physics
+                let isMoving = false;
+                if (keys['arrowleft'] || keys['a']) {
+                    player.x -= player.speed;
+                    isMoving = true;
+                }
+                if (keys['arrowright'] || keys['d']) {
+                    player.x += player.speed;
+                    isMoving = true;
+                }
+
+                player.vy += player.gravity;
+                player.y += player.vy;
+
+                player.grounded = false;
+                const allPlatforms = [
+                    ...platforms,
+                    ...locations.map(loc => ({
+                        x: loc.x,
+                        y: loc.groundY - loc.height,
+                        width: loc.width,
+                        height: loc.height
+                    })),
+                    ...cars.map(car => ({
+                        x: car.x,
+                        y: car.y,
+                        width: car.width,
+                        height: car.height
+                    })),
+                    { x: train.x, y: train.y, width: train.width, height: train.height }
+                ];
+
+                allPlatforms.forEach(platform => {
+                    if (
+                        player.x + player.width > platform.x &&
+                        player.x < platform.x + platform.width &&
+                        player.y + player.height > platform.y &&
+                        player.y + player.height - player.vy <= platform.y &&
+                        player.vy >= 0
+                    ) {
+                        player.y = platform.y - player.height;
+                        player.vy = 0;
+                        player.grounded = true;
+                    }
+                });
+
+                player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+                player.y = Math.min(650 - player.height, player.y);
+
+                pulseOpacity += pulseDirection * 0.02;
+                if (pulseOpacity >= 0.8 || pulseOpacity <= 0.4) pulseDirection *= -1;
+
+                cars.forEach(car => {
+                    car.x += car.speed;
+                    if (car.x > canvas.width) car.x = -car.width;
+                    if (car.x + car.width < 0) car.x = canvas.width;
+                });
+                train.x += train.speed;
+                if (train.x > canvas.width) train.x = -train.width;
+                undergroundTrains.forEach(train => {
+                    train.x += train.speed;
+                    if (train.x > canvas.width) train.x = -train.width;
+                    if (train.x + train.width < 0) train.x = canvas.width;
+                });
+                stars.forEach(star => {
+                    star.opacity = (star.opacity + 0.01) % 1;
+                });
+
+                const isPopupActive = Array.from(document.querySelectorAll('.popup, .welcome-popup')).some(p => p.classList.contains('active'));
+                canvas.classList.toggle('blur', isPopupActive);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#14141E');
+                gradient.addColorStop(0.8, '#1E3A5F');
+                gradient.addColorStop(1, '#3A3A4A');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                stars.forEach(star => {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                distantBuildings.forEach(drawDistantBuilding);
+
+                ctx.fillStyle = '#3A3A4A';
+                ctx.fillRect(0, 290, canvas.width, 5);
+                ctx.fillStyle = '#00DDEB';
+                ctx.fillRect(0, 295, canvas.width, 5);
+
+                drawTrain(train);
+
+                ctx.fillStyle = '#3A3A4A';
+                platforms.forEach(platform => {
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    ctx.strokeStyle = '#00DDEB';
+                    ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+                });
+
+                // Draw locations
+                nearestLoc = null;
+                minDistance = Infinity;
+                locations.forEach((loc, index) => {
+                    if (loc.locked && !achievementsUnlocked) return;
+                    const dx = player.x + player.width / 2 - (loc.x + loc.width / 2);
+                    const dy = player.y + player.height / 2 - (loc.groundY - loc.height / 2);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const isNear = distance < 50;
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestLoc = loc;
+                    }
+
+                    loc.draw(loc.x, loc.groundY, loc.width, loc.height, loc.tooltip, loc.groundY, loc.isPresent, loc);
+
+                    if (isNear && !visited.has(loc.id) && !loc.locked) {
+                        xp += 10;
+                        visited.add(loc.id);
+                        loc.pulseVisited = true;
+                        if (xp >= 100 && !achievementsUnlocked) {
+                            achievementsUnlocked = true;
+                            locations.find(l => l.id === 'achievements').locked = false;
+                            document.getElementById('achievements-popup').classList.add('active');
+                        }
+                    }
+                    if (visited.has(loc.id) && !loc.pulseVisited) {
+                        loc.pulseVisited = true;
+                    }
+                });
+
+                // Draw timeline path (before signs to prevent overlap)
+                const timelineLocs = locations.filter(loc => loc.timelineOrder).sort((a, b) => a.timelineOrder - b.timelineOrder);
+                ctx.strokeStyle = '#00DDEB';
+                ctx.globalAlpha = 0.1; // Further reduced for subtlety
+                ctx.lineWidth = 2; // Reduced from 4
+                ctx.beginPath();
+                ctx.moveTo(timelineLocs[0].x + timelineLocs[0].width / 2, timelineLocs[0].groundY - timelineLocs[0].height / 2);
+                ctx.lineTo(timelineLocs[1].x + timelineLocs[1].width / 2, timelineLocs[1].groundY - timelineLocs[1].height / 2);
+                ctx.lineTo(timelineLocs[2].x + timelineLocs[2].width / 2, timelineLocs[2].groundY - timelineLocs[2].height / 2);
+                ctx.lineTo(timelineLocs[3].x + timelineLocs[3].width / 2, timelineLocs[3].groundY - timelineLocs[3].height / 2);
+                ctx.lineTo(timelineLocs[4].x + timelineLocs[4].width / 2, timelineLocs[4].groundY - timelineLocs[4].height / 2);
+                ctx.lineTo(timelineLocs[5].x + timelineLocs[5].width / 2, timelineLocs[5].groundY - timelineLocs[5].height / 2);
+                ctx.lineTo(timelineLocs[6].x + timelineLocs[6].width / 2, timelineLocs[6].groundY - timelineLocs[6].height / 2);
+                ctx.stroke();
+                ctx.globalAlpha = 0.7; // Reduced for subtlety
+                ctx.lineWidth = 1; // Reduced from 2
+                ctx.beginPath();
+                ctx.moveTo(timelineLocs[0].x + timelineLocs[0].width / 2, timelineLocs[0].groundY - timelineLocs[0].height / 2);
+                ctx.lineTo(timelineLocs[1].x + timelineLocs[1].width / 2, timelineLocs[1].groundY - timelineLocs[1].height / 2);
+                ctx.lineTo(timelineLocs[2].x + timelineLocs[2].width / 2, timelineLocs[2].groundY - timelineLocs[2].height / 2);
+                ctx.lineTo(timelineLocs[3].x + timelineLocs[3].width / 2, timelineLocs[3].groundY - timelineLocs[3].height / 2);
+                ctx.lineTo(timelineLocs[4].x + timelineLocs[4].width / 2, timelineLocs[4].groundY - timelineLocs[4].height / 2);
+                ctx.lineTo(timelineLocs[5].x + timelineLocs[5].width / 2, timelineLocs[5].groundY - timelineLocs[5].height / 2);
+                ctx.lineTo(timelineLocs[6].x + timelineLocs[6].width / 2, timelineLocs[6].groundY - timelineLocs[6].height / 2);
+                ctx.stroke();
+
+                // Draw signs after timeline to ensure visibility
+                signs.forEach(drawSign);
+
+                // Period labels (adjusted for new layer positions)
+                ctx.font = '14px Inter';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.strokeStyle = '#00DDEB';
+                ctx.lineWidth = 0.5;
+                ctx.fillText('2013–2017', 10, 620);
+                ctx.strokeText('2013–2017', 10, 620);
+                ctx.fillText('2018–2022', 10, 420);
+                ctx.strokeText('2018–2022', 10, 420);
+                ctx.fillText('2023–Present', 10, 220);
+                ctx.strokeText('2023–Present', 10, 220);
+
+                ctx.fillStyle = 'rgba(60, 60, 80, 0.8)';
+                ctx.fillRect(0, 650, canvas.width, 150);
+                ctx.fillStyle = '#3A3A4A';
+                ctx.fillRect(0, 650, canvas.width, 150);
+                for (let y = 700; y <= 740; y += 20) {
+                    ctx.fillStyle = '#2A2A3A';
+                    ctx.fillRect(0, y - 5, canvas.width, 2);
+                    ctx.fillStyle = '#FFC107';
+                    ctx.fillRect(0, y - 3, canvas.width, 2);
+                }
+                undergroundTrains.forEach(drawUndergroundTrain);
+                undergroundSigns.forEach(drawSign);
+                for (let x = 50; x < canvas.width; x += 100) {
+                    ctx.fillStyle = '#FFFFE0';
+                    ctx.beginPath();
+                    ctx.arc(x, 670, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                cars.forEach(drawCar);
+
+                ctx.font = '16px Inter';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.strokeStyle = '#00DDEB';
+                ctx.lineWidth = 1;
+                ctx.fillText(`XP: ${xp}/100`, 10, 20);
+                ctx.strokeText(`XP: ${xp}/100`, 10, 20);
+
+                const progressFill = document.getElementById('progress-fill');
+                const progressPercent = (visited.size / (locations.length - 1)) * 100;
+                progressFill.style.width = `${progressPercent}%`;
+
+                if (nearestLoc && minDistance < 100) {
+                    tooltip.style.display = 'block';
+                    tooltip.textContent = nearestLoc.tooltip;
+                    tooltip.style.left = `${nearestLoc.x + nearestLoc.width + 10}px`;
+                    tooltip.style.top = `${nearestLoc.groundY - nearestLoc.height}px`;
+                } else {
+                    tooltip.style.display = 'none';
+                }
+
+                // Draw larger player character
+                ctx.fillStyle = '#FFDAB9';
+                ctx.fillRect(player.x + 6, player.y + 6, 12, 12); // Head (was 8x8)
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(player.x + 6, player.y + 6, 12, 6); // Head top (was 8x4)
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(player.x + 6, player.y + 18, 12, 18); // Torso (was 8x12)
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(player.x + 9, player.y + 18, 6, 12); // Legs (was 4x8)
+                ctx.fillStyle = '#00DDEB';
+                ctx.fillRect(player.x + 10.5, player.y + 24, 3, 6); // Accent (was 2x4)
+
+                requestAnimationFrame(update);
+            } catch (error) {
+                console.error('Error in update loop:', error);
+            }
+        }
+
+        function checkInteraction() {
+            locations.forEach(loc => {
+                if (loc.locked && !achievementsUnlocked) return;
+                const dx = player.x + player.width / 2 - (loc.x + loc.width / 2);
+                const dy = player.y + player.height / 2 - (loc.groundY - loc.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 50) {
+                    document.getElementById(loc.id + '-popup').classList.add('active');
+                }
+            });
+        }
+
+        function closePopup(id) {
+            document.getElementById(id).classList.remove('active');
+            canvas.classList.remove('blur');
+        }
+
+        function closeAllPopups() {
+            document.querySelectorAll('.popup, .welcome-popup').forEach(popup => {
+                popup.classList.remove('active');
+            });
+            canvas.classList.remove('blur');
+        }
+
+        update();
+    </script>
+</body>
+</html>
