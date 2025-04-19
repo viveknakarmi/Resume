@@ -1,0 +1,389 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(180deg, #14141E, #1E3A5F);
+            color: #FFFFFF;
+            min-height: 100vh;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .editor-container {
+            width: 900px;
+            background: rgba(20, 20, 30, 0.95);
+            border: 1px solid #00DDEB;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 0 20px rgba(0, 221, 235, 0.5);
+        }
+        h1, h2 {
+            color: #FFFFFF;
+            margin: 0 0 1rem;
+        }
+        h2 {
+            font-size: 1.5rem;
+            border-bottom: 1px solid #00DDEB;
+            padding-bottom: 0.5rem;
+        }
+        .level-section {
+            margin-bottom: 2rem;
+        }
+        .role-entry {
+            background: #2A2A3A;
+            border: 1px solid #00DDEB;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .form-group {
+            margin-bottom: 0.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+        label {
+            color: #A3BFFA;
+            font-size: 0.9rem;
+            width: 120px;
+        }
+        input, textarea {
+            background: #3A3A4A;
+            border: 1px solid #00DDEB;
+            border-radius: 4px;
+            color: #FFFFFF;
+            padding: 0.5rem;
+            font-family: 'Inter', sans-serif;
+            flex: 1;
+            min-width: 200px;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background: #00DDEB;
+            border: none;
+            border-radius: 4px;
+            color: #14141E;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s ease;
+        }
+        button:hover {
+            background: #00B7C2;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+        .delete-btn {
+            background: #FF5555;
+        }
+        .delete-btn:hover {
+            background: #FF3333;
+        }
+        .add-role-btn {
+            background: #55FF55;
+            color: #14141E;
+        }
+        .add-role-btn:hover {
+            background: #33FF33;
+        }
+        .preview-link {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            background: #00DDEB;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            color: #14141E;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .preview-link:hover {
+            background: #00B7C2;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="preview-link">Back to Game</a>
+    <div class="editor-container">
+        <h1>Edit Your Resume</h1>
+        <div id="levels-container"></div>
+        <div class="action-buttons">
+            <button onclick="saveResume()">Save Resume</button>
+        </div>
+    </div>
+
+    <script>
+        // Default levels data (same as in index.html)
+        const defaultLevels = [
+            {
+                id: 'level1',
+                label: '2023–Present',
+                yLabel: 620,
+                locations: [
+                    { id: 'data-manager', title: 'Data Manager at Consortio', content: '<p>Jul 2023 – Present | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Led data strategy and analytics initiatives.</li><li>Built and maintained dashboards using Looker Studio.</li><li>Managed large datasets with SQL and Google BigQuery.</li><li>Collaborated with teams to drive data-driven decisions.</li></ul>', startYear: 2023, endYear: 'Present', x: 200, y: 570, width: 60, height: 80, groundY: 650, timelineOrder: 1, isPresent: true },
+                    { id: 'education', title: 'Education', content: '<p>Academic Background:</p><ul><li>Diploma in Accounting, Sydney TAFE, 2013.</li><li>Completed courses in SQL and Data Visualization.</li><li>Certified in Advanced Excel and VBA Programming.</li><li>Studied Business Analytics short course, UNSW, 2020.</li></ul>', startYear: null, endYear: null, x: 400, y: 610, width: 40, height: 40, groundY: 650 },
+                    { id: 'skills', title: 'Skills', content: '<p>Core Competencies:</p><ul><li>Data Analysis & Modeling</li><li>SQL & Google BigQuery</li><li>Looker Studio & Data Visualization</li><li>Microsoft Excel & VBA</li><li>Payroll Services & Data Management</li></ul>', startYear: null, endYear: null, x: 600, y: 610, width: 40, height: 40, groundY: 650 },
+                    { id: 'projects', title: 'Projects', content: '<p>Key Achievements in Data Analytics:</p><ul><li>Built a dashboard app for payroll insights using Looker Studio.</li><li>Automated data cleaning with VBA scripts for Consortio.</li><li>Designed SQL queries for real-time reporting at RASHAYS.</li><li>Created predictive models for workforce planning.</li></ul>', startYear: null, endYear: null, x: 800, y: 610, width: 40, height: 40, groundY: 650 },
+                    { id: 'achievements', title: 'Achievements', content: '<p>Career Highlights:</p><ul><li>Certified Data Analyst, 2023.</li><li>Streamlined payroll systems at Consortio, saving 20% time.</li><li>Completed over 100 dashboards for business insights.</li><li>Mentored payroll team to improve accuracy.</li></ul>', startYear: null, endYear: null, x: 800, y: 610, width: 40, height: 40, groundY: 650, locked: true }
+                ],
+                platforms: [
+                    { x: 0, y: 650, width: 900, height: 20 },
+                    { x: 100, y: 550, width: 50, height: 10 }
+                ],
+                signs: [
+                    { x: 190, y: 550, width: 20, height: 10, label: 'Data Manager' },
+                    { x: 390, y: 590, width: 20, height: 10, label: 'Education' },
+                    { x: 590, y: 590, width: 20, height: 10, label: 'Skills' },
+                    { x: 790, y: 590, width: 20, height: 10, label: 'Projects' }
+                ]
+            },
+            {
+                id: 'level2',
+                label: '2018–2022',
+                yLabel: 420,
+                locations: [
+                    { id: 'payroll-officer-consortio', title: 'Payroll Officer at Consortio', content: '<p>Oct 2018 – Mar 2021 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Ensured accurate salary disbursement and compliance.</li><li>Managed overpayment recovery and leave records.</li><li>Prepared reports within regulatory timeframes.</li><li>Used Excel and payroll systems for data tasks.</li></ul>', startYear: 2018, endYear: 2021, x: 200, y: 410, width: 40, height: 40, groundY: 450, timelineOrder: 2 },
+                    { id: 'payroll-team-leader', title: 'Payroll Team Leader at Consortio', content: '<p>Mar 2021 – Nov 2021 | Australia</p><p>Responsibilities:</p><ul><li>Led payroll team to ensure timely processing.</li><li>Implemented process improvements for efficiency.</li><li>Ensured data accuracy across payroll systems.</li><li>Supported compliance with payroll regulations.</li></ul>', startYear: 2021, endYear: 2021, x: 400, y: 400, width: 40, height: 50, groundY: 450, timelineOrder: 3 },
+                    { id: 'payroll-manager', title: 'Payroll Manager at Consortio', content: '<p>Nov 2021 – Jun 2023 | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Oversaw payroll processing for accuracy and compliance.</li><li>Developed reports using SQL and Excel for insights.</li><li>Streamlined payroll workflows with VBA automation.</li><li>Trained team on payroll systems and data tools.</li></ul>', startYear: 2021, endYear: 2023, x: 600, y: 390, width: 40, height: 60, groundY: 450, timelineOrder: 4 }
+                ],
+                platforms: [
+                    { x: 100, y: 450, width: 700, height: 20 },
+                    { x: 100, y: 350, width: 50, height: 10 }
+                ],
+                signs: [
+                    { x: 190, y: 390, width: 20, height: 10, label: 'Payroll Officer Consortio' },
+                    { x: 390, y: 380, width: 20, height: 10, label: 'Payroll Team Leader' },
+                    { x: 590, y: 370, width: 20, height: 10, label: 'Payroll Manager' }
+                ]
+            },
+            {
+                id: 'level3',
+                label: '2013–2017',
+                yLabel: 220,
+                locations: [
+                    { id: 'intern-cerno', title: 'Intern at Cerno', content: '<p>Mar 2013 – Jun 2013 | St. Leonards, Sydney</p><p>Responsibilities:</p><ul><li>Compared bank statements with Navision journals.</li><li>Checked invoice status and payment details.</li><li>Assisted with financial data verification.</li><li>Supported team with administrative tasks.</li></ul>', startYear: 2013, endYear: 2013, x: 200, y: 210, width: 40, height: 40, groundY: 250, timelineOrder: 5 },
+                    { id: 'intern-accountant', title: 'Intern Assistant Accountant', content: '<p>Feb 2015 – Nov 2015 | Surry Hills, Sydney</p><p>Responsibilities:</p><ul><li>Managed accounts payable/receivable using MYOB.</li><li>Reconciled bank accounts and payroll sheets.</li><li>Prepared Business Activity Statements (BAS).</li><li>Performed cost center analysis with Excel.</li></ul>', startYear: 2015, endYear: 2015, x: 400, y: 200, width: 40, height: 50, groundY: 250, timelineOrder: 6 },
+                    { id: 'payroll-officer-rashays', title: 'Payroll Officer at RASHAYS', content: '<p>Nov 2015 – Oct 2018 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Processed payroll for restaurant staff accurately.</li><li>Maintained employee records and leave balances.</li><li>Ensured compliance with payroll regulations.</li><li>Generated reports using Excel for management.</li></ul>', startYear: 2015, endYear: 2018, x: 600, y: 190, width: 40, height: 60, groundY: 250, timelineOrder: 7 }
+                ],
+                platforms: [
+                    { x: 0, y: 250, width: 700, height: 20 },
+                    { x: 100, y: 200, width: 50, height: 10 },
+                    { x: 750, y: 200, width: 50, height: 10 }
+                ],
+                signs: [
+                    { x: 190, y: 190, width: 20, height: 10, label: 'Intern at Cerno' },
+                    { x: 390, y: 180, width: 20, height: 10, label: 'Intern Accountant' },
+                    { x: 590, y: 170, width: 20, height: 10, label: 'Payroll Officer RASHAYS' }
+                ]
+            }
+        ];
+
+        // Load levels from localStorage or use default
+        let levels = JSON.parse(localStorage.getItem('resumeLevels')) || defaultLevels;
+
+        // Function to render the editor
+        function renderEditor() {
+            const container = document.getElementById('levels-container');
+            container.innerHTML = '';
+
+            levels.forEach((level, levelIndex) => {
+                const levelSection = document.createElement('div');
+                levelSection.className = 'level-section';
+                levelSection.innerHTML = `<h2>${level.label}</h2>`;
+
+                // Render each role in the level
+                level.locations.forEach((loc, locIndex) => {
+                    const roleEntry = document.createElement('div');
+                    roleEntry.className = 'role-entry';
+                    roleEntry.innerHTML = `
+                        <div class="form-group">
+                            <label>Title:</label>
+                            <input type="text" value="${loc.title}" onchange="updateField(${levelIndex}, ${locIndex}, 'title', this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>Content:</label>
+                            <textarea onchange="updateField(${levelIndex}, ${locIndex}, 'content', this.value)">${loc.content}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Start Year:</label>
+                            <input type="text" value="${loc.startYear || ''}" onchange="updateField(${levelIndex}, ${locIndex}, 'startYear', this.value)">
+                            <label>End Year:</label>
+                            <input type="text" value="${loc.endYear || ''}" onchange="updateField(${levelIndex}, ${locIndex}, 'endYear', this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>X Position:</label>
+                            <input type="number" value="${loc.x}" onchange="updateField(${levelIndex}, ${locIndex}, 'x', parseInt(this.value))">
+                            <label>Y Position:</label>
+                            <input type="number" value="${loc.y}" onchange="updateField(${levelIndex}, ${locIndex}, 'y', parseInt(this.value))">
+                        </div>
+                        <div class="form-group">
+                            <label>Width:</label>
+                            <input type="number" value="${loc.width}" onchange="updateField(${levelIndex}, ${locIndex}, 'width', parseInt(this.value))">
+                            <label>Height:</label>
+                            <input type="number" value="${loc.height}" onchange="updateField(${levelIndex}, ${locIndex}, 'height', parseInt(this.value))">
+                        </div>
+                        <div class="form-group">
+                            <label>Ground Y:</label>
+                            <input type="number" value="${loc.groundY}" onchange="updateField(${levelIndex}, ${locIndex}, 'groundY', parseInt(this.value))">
+                            <label>Timeline Order:</label>
+                            <input type="number" value="${loc.timelineOrder || ''}" onchange="updateField(${levelIndex}, ${locIndex}, 'timelineOrder', parseInt(this.value))">
+                        </div>
+                        <div class="form-group">
+                            <label>Is Present:</label>
+                            <input type="checkbox" ${loc.isPresent ? 'checked' : ''} onchange="updateField(${levelIndex}, ${locIndex}, 'isPresent', this.checked)">
+                        </div>
+                        <button class="delete-btn" onclick="deleteRole(${levelIndex}, ${locIndex})">Delete Role</button>
+                    `;
+                    levelSection.appendChild(roleEntry);
+
+                    // Update corresponding sign
+                    const sign = level.signs[locIndex];
+                    if (sign) {
+                        sign.label = loc.title;
+                        sign.x = loc.x - 10;
+                        sign.y = loc.y - 20;
+                    }
+                });
+
+                // Add "Add Role" button for this level
+                const addButton = document.createElement('button');
+                addButton.className = 'add-role-btn';
+                addButton.textContent = 'Add New Role';
+                addButton.onclick = () => addRole(levelIndex);
+                levelSection.appendChild(addButton);
+
+                container.appendChild(levelSection);
+            });
+        }
+
+        // Update a field in the levels array
+        function updateField(levelIndex, locIndex, field, value) {
+            levels[levelIndex].locations[locIndex][field] = value;
+            // Update sign label if title changes
+            if (field === 'title') {
+                const sign = levels[levelIndex].signs[locIndex];
+                if (sign) sign.label = value;
+            }
+            // Update sign position if x or y changes
+            if (field === 'x' || field === 'y') {
+                const sign = levels[levelIndex].signs[locIndex];
+                if (sign) {
+                    sign.x = levels[levelIndex].locations[locIndex].x - 10;
+                    sign.y = levels[levelIndex].locations[locIndex].y - 20;
+                }
+            }
+            renderEditor();
+        }
+
+        // Add a new role to a level
+        function addRole(levelIndex) {
+            const level = levels[levelIndex];
+            const lastLoc = level.locations[level.locations.length - 1];
+            const newX = lastLoc ? lastLoc.x + 200 : 200;
+            const newTimelineOrder = Math.max(...level.locations.map(loc => loc.timelineOrder || 0), 0) + 1;
+
+            const newRole = {
+                id: `role-${Date.now()}`,
+                title: 'New Role',
+                content: '<p>Start Date – End Date | Location</p><p>Responsibilities:</p><ul><li>Responsibility 1</li><li>Responsibility 2</li></ul>',
+                startYear: null,
+                endYear: null,
+                x: newX,
+                y: level.locations[0].y,
+                width: 40,
+                height: 40,
+                groundY: level.locations[0].groundY,
+                timelineOrder: newTimelineOrder
+            };
+
+            level.locations.push(newRole);
+            level.signs.push({
+                x: newX - 10,
+                y: newRole.y - 20,
+                width: 20,
+                height: 10,
+                label: 'New Role'
+            });
+
+            renderEditor();
+        }
+
+        // Delete a role from a level
+        function deleteRole(levelIndex, locIndex) {
+            levels[levelIndex].locations.splice(locIndex, 1);
+            levels[levelIndex].signs.splice(locIndex, 1);
+            // Recompute timelineOrder for remaining roles
+            levels[levelIndex].locations.forEach((loc, i) => {
+                if (loc.timelineOrder) {
+                    loc.timelineOrder = i + 1;
+                }
+            });
+            renderEditor();
+        }
+
+        // Save the resume to localStorage
+        function saveResume() {
+            localStorage.setItem('resumeLevels', JSON.stringify(levels));
+            alert('Resume saved! Return to the game to see your changes.');
+        }
+
+        // Initial render
+        renderEditor();
+    </script>
+</body>
+</html>

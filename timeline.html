@@ -1,0 +1,248 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vivek Anand Nakarmi - Career Timeline</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(180deg, #14141E, #1E3A5F);
+            color: #FFFFFF;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            width: 80%;
+            max-width: 800px;
+            padding: 2rem;
+            position: relative;
+        }
+        h1 {
+            text-align: center;
+            color: #00DDEB;
+            margin-bottom: 2rem;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #00DDEB;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -38px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            background: #00DDEB;
+            border: 2px solid #14141E;
+            border-radius: 50%;
+        }
+        .timeline-item h3 {
+            color: #00DDEB;
+            margin: 0 0 0.5rem;
+        }
+        .timeline-item .date {
+            color: #A3BFFA;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .timeline-item p, .timeline-item ul {
+            color: #A3BFFA;
+            font-size: 1rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+        .timeline-item ul {
+            list-style: disc;
+            padding-left: 20px;
+            margin-top: 0.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 0.5rem 1rem;
+            background: #00DDEB;
+            color: #14141E;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: background 0.2s ease;
+        }
+        .back-link:hover {
+            background: #00B7C2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>My Career Timeline</h1>
+        <div class="timeline" id="timeline">
+            <!-- Timeline items will be populated by JavaScript -->
+        </div>
+        <a href="index.html" class="back-link">Back to Interactive Resume</a>
+    </div>
+
+    <script>
+        const careerData = [
+            {
+                title: 'Intern at Cerno',
+                date: 'Mar 2013 – Jun 2013',
+                description: 'St. Leonards, Sydney<br>Responsibilities:<ul><li>Compared bank statements with Navision journals.</li><li>Checked invoice status and payment details.</li><li>Assisted with financial data verification.</li><li>Supported team with administrative tasks.</li></ul>',
+                startYear: 2013,
+                endYear: 2013
+            },
+            {
+                title: 'Intern Assistant Accountant',
+                date: 'Feb 2015 – Nov 2015',
+                description: 'Surry Hills, Sydney<br>Responsibilities:<ul><li>Managed accounts payable/receivable using MYOB.</li><li>Reconciled bank accounts and payroll sheets.</li><li>Prepared Business Activity Statements (BAS).</li><li>Performed cost center analysis with Excel.</li></ul>',
+                startYear: 2015,
+                endYear: 2015
+            },
+            {
+                title: 'Payroll Officer at RASHAYS',
+                date: 'Nov 2015 – Oct 2018',
+                description: 'Sydney, Australia<br>Responsibilities:<ul><li>Processed payroll for restaurant staff accurately.</li><li>Maintained employee records and leave balances.</li><li>Ensured compliance with payroll regulations.</li><li>Generated reports using Excel for management.</li></ul>',
+                startYear: 2015,
+                endYear: 2018
+            },
+            {
+                title: 'Payroll Officer at Consortio',
+                date: 'Oct 2018 – Mar 2021',
+                description: 'Sydney, Australia<br>Responsibilities:<ul><li>Ensured accurate salary disbursement and compliance.</li><li>Managed overpayment recovery and leave records.</li><li>Prepared reports within regulatory timeframes.</li><li>Used Excel and payroll systems for data tasks.</li></ul>',
+                startYear: 2018,
+                endYear: 2021
+            },
+            {
+                title: 'Payroll Team Leader at Consortio',
+                date: 'Mar 2021 – Nov 2021',
+                description: 'Australia<br>Responsibilities:<ul><li>Led payroll team to ensure timely processing.</li><li>Implemented process improvements for efficiency.</li><li>Ensured data accuracy across payroll systems.</li><li>Supported compliance with payroll regulations.</li></ul>',
+                startYear: 2021,
+                endYear: 2021
+            },
+            {
+                title: 'Payroll Manager at Consortio',
+                date: 'Nov 2021 – Jun 2023',
+                description: 'Sydney, NSW, Australia<br>Responsibilities:<ul><li>Oversaw payroll processing for accuracy and compliance.</li><li>Developed reports using SQL and Excel for insights.</li><li>Streamlined payroll workflows with VBA automation.</li><li>Trained team on payroll systems and data tools.</li></ul>',
+                startYear: 2021,
+                endYear: 2023
+            },
+            {
+                title: 'Data Manager at Consortio',
+                date: 'Jul 2023 – Present',
+                description: 'Sydney, NSW, Australia<br>Responsibilities:<ul><li>Led data strategy and analytics initiatives.</li><li>Built and maintained dashboards using Looker Studio.</li><li>Managed large datasets with SQL and Google BigQuery.</li><li>Collaborated with teams to drive data-driven decisions.</li></ul>',
+                startYear: 2023,
+                endYear: 'Present'
+            },
+            {
+                title: 'Education',
+                date: '',
+                description: 'Academic Background:<ul><li>Diploma in Accounting, Sydney TAFE, 2013.</li><li>Completed courses in SQL and Data Visualization.</li><li>Certified in Advanced Excel and VBA Programming.</li><li>Studied Business Analytics short course, UNSW, 2020.</li></ul>',
+                startYear: null,
+                endYear: null
+            },
+            {
+                title: 'Skills',
+                date: '',
+                description: 'Core Competencies:<ul><li>Data Analysis & Modeling</li><li>SQL & Google BigQuery</li><li>Looker Studio & Data Visualization</li><li>Microsoft Excel & VBA</li><li>Payroll Services & Data Management</li></ul>',
+                startYear: null,
+                endYear: null
+            },
+            {
+                title: 'Projects',
+                date: '',
+                description: 'Key Achievements in Data Analytics:<ul><li>Built a dashboard app for payroll insights using Looker Studio.</li><li>Automated data cleaning with VBA scripts for Consortio.</li><li>Designed SQL queries for real-time reporting at RASHAYS.</li><li>Created predictive models for workforce planning.</li></ul>',
+                startYear: null,
+                endYear: null
+            },
+            {
+                title: 'Achievements',
+                date: '',
+                description: 'Career Highlights:<ul><li>Certified Data Analyst, 2023.</li><li>Streamlined payroll systems at Consortio, saving 20% time.</li><li>Completed over 100 dashboards for business insights.</li><li>Mentored payroll team to improve accuracy.</li></ul>',
+                startYear: null,
+                endYear: null
+            }
+        ];
+
+        const timelineContainer = document.getElementById('timeline');
+
+        // Sort career data by startYear (if available), placing items without dates (like Education) at the end
+        careerData.sort((a, b) => {
+            if (!a.startYear && !b.startYear) return 0;
+            if (!a.startYear) return 1;
+            if (!b.startYear) return -1;
+            return a.startYear - b.startYear;
+        });
+
+        // Populate the timeline
+        careerData.forEach(item => {
+            const timelineItem = document.createElement('div');
+            timelineItem.className = 'timeline-item';
+            timelineItem.innerHTML = `
+                <h3>${item.title}</h3>
+                ${item.date ? `<div class="date">${item.date}</div>` : ''}
+                <p>${item.description}</p>
+            `;
+            timelineContainer.appendChild(timelineItem);
+        });
+    </script>
+</body>
+</html>
