@@ -124,6 +124,11 @@
         .popup a:hover {
             text-decoration: underline;
         }
+        .popup p, .popup li, .popup strong, .popup b {
+            background: none !important;
+            color: #A3BFFA !important;
+            font-weight: normal !important;
+        }
         .close-btn {
             position: absolute;
             top: 1rem;
@@ -226,6 +231,20 @@
             display: none;
         }
     </style>
+    <script>
+        // Define closePopup and closeAllPopups early so they are available for inline handlers
+        function closePopup(id) {
+            document.getElementById(id).classList.remove('active');
+            document.getElementById('game-canvas').classList.remove('blur');
+        }
+
+        function closeAllPopups() {
+            document.querySelectorAll('.popup, .welcome-popup').forEach(popup => {
+                popup.classList.remove('active');
+            });
+            document.getElementById('game-canvas').classList.remove('blur');
+        }
+    </script>
 </head>
 <body>
     <div id="game-container">
@@ -260,9 +279,9 @@
         // Player (larger size)
         const player = {
             x: 150,
-            y: 626, // Start on bottom layer (2013–2017)
-            width: 24, // Increased from 16
-            height: 36, // Increased from 24
+            y: 626,
+            width: 24,
+            height: 36,
             speed: 3,
             vy: 0,
             jumpPower: -13,
@@ -270,54 +289,43 @@
             grounded: true
         };
 
-        // Platforms (same positions, but layers reordered)
         const platforms = [
-            { x: 0, y: 650, width: 900, height: 20 }, // Bottom layer (2013–2017)
-            { x: 100, y: 450, width: 700, height: 20 }, // Middle layer (2018–2022)
-            { x: 0, y: 250, width: 700, height: 20 }, // Top layer (2023–Present)
-            { x: 100, y: 600, width: 50, height: 10 }, // Decorative platforms (adjusted for new layers)
+            { x: 0, y: 650, width: 900, height: 20 },
+            { x: 100, y: 450, width: 700, height: 20 },
+            { x: 0, y: 250, width: 700, height: 20 },
+            { x: 100, y: 600, width: 50, height: 10 },
             { x: 750, y: 600, width: 50, height: 10 },
             { x: 100, y: 400, width: 50, height: 10 },
             { x: 750, y: 400, width: 50, height: 10 }
         ];
 
-        // Signs (adjusted for new layer positions and raised further)
         const signs = [
-            // Bottom layer (2013–2017, y=650)
             { x: 190, y: 510, width: 20, height: 10, label: 'Intern at Cerno' },
             { x: 390, y: 510, width: 20, height: 10, label: 'Intern Accountant' },
             { x: 590, y: 510, width: 20, height: 10, label: 'Payroll Officer RASHAYS' },
-            // Middle layer (2018–2022, y=450)
             { x: 590, y: 350, width: 20, height: 10, label: 'Payroll Officer Consortio' },
             { x: 390, y: 340, width: 20, height: 10, label: 'Payroll Team Leader' },
             { x: 190, y: 330, width: 20, height: 10, label: 'Payroll Manager' },
-            // Top layer (2023–Present, y=250)
             { x: 190, y: 150, width: 20, height: 10, label: 'Data Manager' },
             { x: 390, y: 150, width: 20, height: 10, label: 'Education' },
             { x: 590, y: 150, width: 20, height: 10, label: 'Skills' },
             { x: 790, y: 150, width: 20, height: 10, label: 'Projects' }
         ];
 
-        // Load locations (reordered for career ladder: bottom to top)
-        const savedLocations = JSON.parse(localStorage.getItem('resumeLocations')) || [
-            // Bottom layer: 2013–2017 (y=650, left-to-right)
+        let savedLocations = JSON.parse(localStorage.getItem('resumeLocations')) || [
             { id: 'intern-cerno', title: 'Intern at Cerno', content: '<p>Mar 2013 – Jun 2013 | St. Leonards, Sydney</p><p>Responsibilities:</p><ul><li>Compared bank statements with Navision journals.</li><li>Checked invoice status and payment details.</li><li>Assisted with financial data verification.</li><li>Supported team with administrative tasks.</li></ul>', startYear: 2013, endYear: 2013, layer: 'bottom', x: 200, y: 610, width: 40, height: 40, groundY: 650, timelineOrder: 1 },
             { id: 'intern-accountant', title: 'Intern Assistant Accountant', content: '<p>Feb 2015 – Nov 2015 | Surry Hills, Sydney</p><p>Responsibilities:</p><ul><li>Managed accounts payable/receivable using MYOB.</li><li>Reconciled bank accounts and payroll sheets.</li><li>Prepared Business Activity Statements (BAS).</li><li>Performed cost center analysis with Excel.</li></ul>', startYear: 2015, endYear: 2015, layer: 'bottom', x: 400, y: 600, width: 40, height: 50, groundY: 650, timelineOrder: 2 },
             { id: 'payroll-officer-rashays', title: 'Payroll Officer at RASHAYS', content: '<p>Nov 2015 – Oct 2018 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Processed payroll for restaurant staff accurately.</li><li>Maintained employee records and leave balances.</li><li>Ensured compliance with payroll regulations.</li><li>Generated reports using Excel for management.</li></ul>', startYear: 2015, endYear: 2018, layer: 'bottom', x: 600, y: 590, width: 40, height: 60, groundY: 650, timelineOrder: 3 },
-            // Middle layer: 2018–2022 (y=450, right-to-left)
             { id: 'payroll-officer-consortio', title: 'Payroll Officer at Consortio', content: '<p>Oct 2018 – Mar 2021 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Ensured accurate salary disbursement and compliance.</li><li>Managed overpayment recovery and leave records.</li><li>Prepared reports within regulatory timeframes.</li><li>Used Excel and payroll systems for data tasks.</li></ul>', startYear: 2018, endYear: 2021, layer: 'middle', x: 600, y: 410, width: 40, height: 40, groundY: 450, timelineOrder: 4 },
             { id: 'payroll-team-leader', title: 'Payroll Team Leader at Consortio', content: '<p>Mar 2021 – Nov 2021 | Australia</p><p>Responsibilities:</p><ul><li>Led payroll team to ensure timely processing.</li><li>Implemented process improvements for efficiency.</li><li>Ensured data accuracy across payroll systems.</li><li>Supported compliance with payroll regulations.</li></ul>', startYear: 2021, endYear: 2021, layer: 'middle', x: 400, y: 400, width: 40, height: 50, groundY: 450, timelineOrder: 5 },
             { id: 'payroll-manager', title: 'Payroll Manager at Consortio', content: '<p>Nov 2021 – Jun 2023 | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Oversaw payroll processing for accuracy and compliance.</li><li>Developed reports using SQL and Excel for insights.</li><li>Streamlined payroll workflows with VBA automation.</li><li>Trained team on payroll systems and data tools.</li></ul>', startYear: 2021, endYear: 2023, layer: 'middle', x: 200, y: 390, width: 40, height: 60, groundY: 450, timelineOrder: 6 },
-            // Top layer: 2023–Present (y=250)
             { id: 'data-manager', title: 'Data Manager at Consortio', content: '<p>Jul 2023 – Present | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Led data strategy and analytics initiatives.</li><li>Built and maintained dashboards using Looker Studio.</li><li>Managed large datasets with SQL and Google BigQuery.</li><li>Collaborated with teams to drive data-driven decisions.</li></ul>', startYear: 2023, endYear: 'Present', layer: 'top', x: 200, y: 170, width: 60, height: 80, groundY: 250, timelineOrder: 7, isPresent: true },
-            // Non-temporal (top layer, off timeline)
             { id: 'education', title: 'Education', content: '<p>Academic Background:</p><ul><li>Diploma in Accounting, Sydney TAFE, 2013.</li><li>Completed courses in SQL and Data Visualization.</li><li>Certified in Advanced Excel and VBA Programming.</li><li>Studied Business Analytics short course, UNSW, 2020.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 400, y: 210, width: 40, height: 40, groundY: 250 },
             { id: 'skills', title: 'Skills', content: '<p>Core Competencies:</p><ul><li>Data Analysis & Modeling</li><li>SQL & Google BigQuery</li><li>Looker Studio & Data Visualization</li><li>Microsoft Excel & VBA</li><li>Payroll Services & Data Management</li></ul>', startYear: null, endYear: null, layer: 'top', x: 600, y: 210, width: 40, height: 40, groundY: 250 },
             { id: 'projects', title: 'Projects', content: '<p>Key Achievements in Data Analytics:</p><ul><li>Built a dashboard app for payroll insights using Looker Studio.</li><li>Automated data cleaning with VBA scripts for Consortio.</li><li>Designed SQL queries for real-time reporting at RASHAYS.</li><li>Created predictive models for workforce planning.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 800, y: 210, width: 40, height: 40, groundY: 250 },
             { id: 'achievements', title: 'Achievements', content: '<p>Career Highlights:</p><ul><li>Certified Data Analyst, 2023.</li><li>Streamlined payroll systems at Consortio, saving 20% time.</li><li>Completed over 100 dashboards for business insights.</li><li>Mentored payroll team to improve accuracy.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 800, y: 210, width: 40, height: 40, groundY: 250, locked: true }
         ];
 
-        // Initialize locations
         const locations = savedLocations.map(loc => ({
             ...loc,
             radiating: false,
@@ -340,7 +348,6 @@
             popupsContainer.appendChild(popup);
         });
 
-        // Background elements
         const cars = [
             { x: 0, y: 780, width: 40, height: 15, speed: 2, color: '#00DDEB' },
             { x: 300, y: 780, width: 40, height: 15, speed: -1.5, color: '#A3BFFA' }
@@ -369,7 +376,6 @@
             { x: 500, y: 680, width: 20, height: 10, label: 'Exit' }
         ];
 
-        // Draw functions
         function drawBuilding(x, y, width, height, tooltip, groundY, isPresent, loc) {
             const baseY = groundY - height;
             ctx.save();
@@ -554,7 +560,6 @@
             ctx.lineWidth = 0.5;
             ctx.fillText(sign.label, sign.x + 2, sign.y + 8);
             ctx.strokeText(sign.label, sign.x + 2, sign.y + 8);
-            // Log sign positions for debugging
             console.log(`Drawing sign: ${sign.label} at x=${sign.x}, y=${sign.y}`);
         }
 
@@ -563,7 +568,6 @@
             ctx.fillRect(building.x, building.y - building.height, building.width, building.height);
         }
 
-        // Game state
         let xp = 0;
         const visited = new Set();
         let achievementsUnlocked = false;
@@ -572,12 +576,10 @@
         let nearestLoc = null;
         let minDistance = Infinity;
 
-        // Tooltip
         const tooltip = document.createElement('div');
         tooltip.className = 'tooltip';
         document.body.appendChild(tooltip);
 
-        // Input handling
         const keys = {};
         document.addEventListener('keydown', (e) => {
             keys[e.key.toLowerCase()] = true;
@@ -596,7 +598,6 @@
 
         function update() {
             try {
-                // Physics
                 let isMoving = false;
                 if (keys['arrowleft'] || keys['a']) {
                     player.x -= player.speed;
@@ -699,7 +700,6 @@
                     ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
                 });
 
-                // Draw locations
                 nearestLoc = null;
                 minDistance = Infinity;
                 locations.forEach((loc, index) => {
@@ -731,11 +731,10 @@
                     }
                 });
 
-                // Draw timeline path (before signs to prevent overlap)
                 const timelineLocs = locations.filter(loc => loc.timelineOrder).sort((a, b) => a.timelineOrder - b.timelineOrder);
                 ctx.strokeStyle = '#00DDEB';
-                ctx.globalAlpha = 0.1; // Further reduced for subtlety
-                ctx.lineWidth = 2; // Reduced from 4
+                ctx.globalAlpha = 0.1;
+                ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.moveTo(timelineLocs[0].x + timelineLocs[0].width / 2, timelineLocs[0].groundY - timelineLocs[0].height / 2);
                 ctx.lineTo(timelineLocs[1].x + timelineLocs[1].width / 2, timelineLocs[1].groundY - timelineLocs[1].height / 2);
@@ -745,8 +744,8 @@
                 ctx.lineTo(timelineLocs[5].x + timelineLocs[5].width / 2, timelineLocs[5].groundY - timelineLocs[5].height / 2);
                 ctx.lineTo(timelineLocs[6].x + timelineLocs[6].width / 2, timelineLocs[6].groundY - timelineLocs[6].height / 2);
                 ctx.stroke();
-                ctx.globalAlpha = 0.7; // Reduced for subtlety
-                ctx.lineWidth = 1; // Reduced from 2
+                ctx.globalAlpha = 0.7;
+                ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(timelineLocs[0].x + timelineLocs[0].width / 2, timelineLocs[0].groundY - timelineLocs[0].height / 2);
                 ctx.lineTo(timelineLocs[1].x + timelineLocs[1].width / 2, timelineLocs[1].groundY - timelineLocs[1].height / 2);
@@ -757,10 +756,8 @@
                 ctx.lineTo(timelineLocs[6].x + timelineLocs[6].width / 2, timelineLocs[6].groundY - timelineLocs[6].height / 2);
                 ctx.stroke();
 
-                // Draw signs after timeline to ensure visibility
                 signs.forEach(drawSign);
 
-                // Period labels (adjusted for new layer positions)
                 ctx.font = '14px Inter';
                 ctx.fillStyle = '#FFFFFF';
                 ctx.strokeStyle = '#00DDEB';
@@ -813,17 +810,16 @@
                     tooltip.style.display = 'none';
                 }
 
-                // Draw larger player character
                 ctx.fillStyle = '#FFDAB9';
-                ctx.fillRect(player.x + 6, player.y + 6, 12, 12); // Head (was 8x8)
+                ctx.fillRect(player.x + 6, player.y + 6, 12, 12);
                 ctx.fillStyle = '#000000';
-                ctx.fillRect(player.x + 6, player.y + 6, 12, 6); // Head top (was 8x4)
+                ctx.fillRect(player.x + 6, player.y + 6, 12, 6);
                 ctx.fillStyle = '#000000';
-                ctx.fillRect(player.x + 6, player.y + 18, 12, 18); // Torso (was 8x12)
+                ctx.fillRect(player.x + 6, player.y + 18, 12, 18);
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(player.x + 9, player.y + 18, 6, 12); // Legs (was 4x8)
+                ctx.fillRect(player.x + 9, player.y + 18, 6, 12);
                 ctx.fillStyle = '#00DDEB';
-                ctx.fillRect(player.x + 10.5, player.y + 24, 3, 6); // Accent (was 2x4)
+                ctx.fillRect(player.x + 10.5, player.y + 24, 3, 6);
 
                 requestAnimationFrame(update);
             } catch (error) {
@@ -837,23 +833,44 @@
                 const dx = player.x + player.width / 2 - (loc.x + loc.width / 2);
                 const dy = player.y + player.height / 2 - (loc.groundY - loc.height / 2);
                 const distance = Math.sqrt(dx * dx + dy * dy);
+                console.log(`Distance to ${loc.id}: ${distance}`); // Debug distance
                 if (distance < 50) {
-                    document.getElementById(loc.id + '-popup').classList.add('active');
+                    const popup = document.getElementById(loc.id + '-popup');
+                    if (popup) documentazione.getElementById(loc.id + '-popup').classList.add('active');
+                    else console.error(`Popup for ${loc.id} not found`);
                 }
             });
         }
 
-        function closePopup(id) {
-            document.getElementById(id).classList.remove('active');
-            canvas.classList.remove('blur');
-        }
+        // Listen for localStorage changes
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'resumeLocations') {
+                savedLocations = JSON.parse(event.newValue) || savedLocations;
+                locations.length = 0;
+                savedLocations.forEach(loc => {
+                    locations.push({
+                        ...loc,
+                        radiating: false,
+                        pulseVisited: false,
+                        draw: drawBuilding,
+                        tooltip: loc.startYear ? `${loc.startYear}${loc.endYear === 'Present' ? '–Present' : loc.endYear ? '–' + loc.endYear : ''}: ${loc.title}` : loc.title
+                    });
+                });
 
-        function closeAllPopups() {
-            document.querySelectorAll('.popup, .welcome-popup').forEach(popup => {
-                popup.classList.remove('active');
-            });
-            canvas.classList.remove('blur');
-        }
+                popupsContainer.innerHTML = '';
+                locations.forEach(loc => {
+                    const popup = document.createElement('div');
+                    popup.className = 'popup';
+                    popup.id = loc.id + '-popup';
+                    popup.innerHTML = `
+                        <button class="close-btn" onclick="closePopup('${loc.id}-popup')">×</button>
+                        <h2>${loc.title}</h2>
+                        ${loc.content}
+                    `;
+                    popupsContainer.appendChild(popup);
+                });
+            }
+        });
 
         update();
     </script>
