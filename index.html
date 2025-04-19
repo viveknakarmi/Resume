@@ -646,11 +646,11 @@
         }
 
         function drawSign(sign) {
-           // ctx.fillStyle = '#00DDEB';
+           ctx.fillStyle = '#00DDEB';
             ctx.fillRect(sign.x, sign.y, sign.width, sign.height);
             ctx.font = `${12 * scaleX}px Inter`;
-           // ctx.fillStyle = '#FFFFFF';
-            ctx.fillText(sign.label, sign.x + 2 * scaleX, sign.y + 8 * scaleY);
+           ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(sign.label, sign.x + 2 * scaleX, sign.y + 1 * scaleY);
         }
 
         function drawDistantBuilding(building) {
