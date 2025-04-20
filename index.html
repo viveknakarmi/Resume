@@ -645,13 +645,18 @@
             }
         }
 
-        function drawSign(sign) {
-           ctx.fillStyle = '#00DDEB';
-            ctx.fillRect(sign.x, sign.y, sign.width, sign.height);
-            ctx.font = `${12 * scaleX}px Inter`;
+            function drawSign(sign) {
+    ctx.font = `${12 * scaleX}px Inter`;
+    ctx.fillStyle = '#FFFFFF'; // Explicitly set text color to white
+    ctx.fillText(sign.label, sign.x + 2 * scaleX, sign.y + 1 * scaleY);
+}
+      //  function drawSign(sign) {
+        //   ctx.fillStyle = '#00DDEB';
+          //  ctx.fillRect(sign.x, sign.y, sign.width, sign.height);
+           // ctx.font = `${12 * scaleX}px Inter`;
           // ctx.fillStyle = '#FFFFFF';
-            ctx.fillText(sign.label, sign.x + 2* scaleX, sign.y+1  * scaleY);
-        }
+            //ctx.fillText(sign.label, sign.x + 2* scaleX, sign.y+1  * scaleY);
+        //}
 
         function drawDistantBuilding(building) {
             ctx.fillStyle = '#1E3A5F';
