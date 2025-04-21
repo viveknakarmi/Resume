@@ -60,10 +60,9 @@
         }
         #game-container {
             position: relative;
-            width: 90vw;
-            max-width: 900px;
-            height: 70vh;
-            max-height: 600px;
+            width: calc(100vw - 20px);
+            height: calc(90vh - 20px);
+            margin: 10px;
             border: 2px solid #00DDEB;
             border-radius: 8px;
             overflow: hidden;
@@ -151,6 +150,9 @@
             margin-top: 0.5rem;
             font-size: 1rem;
             color: #A3BFFA;
+            position: absolute;
+            bottom: 5px;
+            width: 100%;
         }
         .progress-bar {
             position: absolute;
@@ -168,7 +170,7 @@
             border-radius: 4px;
             transition: width 0.3s ease;
         }
-        .timeline-link, .editor-link {
+        .timeline-link {
             background: #00DDEB;
             padding: 0.4rem 0.8rem;
             border-radius: 4px;
@@ -184,12 +186,11 @@
             position: absolute;
             top: 10px;
             display: flex;
-            justify-content: space-between;
-            width: 90vw;
-            max-width: 900px;
+            justify-content: center;
+            width: 100vw;
             z-index: 15;
         }
-        .timeline-link:hover, .editor-link:hover {
+        .timeline-link:hover {
             background: #00B7C2;
         }
         .welcome-popup {
@@ -227,10 +228,11 @@
         .controls {
             position: fixed;
             bottom: 15px;
-            width: 90vw;
-            max-width: 900px;
+            width: 100vw;
             display: flex;
             justify-content: space-between;
+            padding: 0 10px;
+            box-sizing: border-box;
             z-index: 15;
         }
         .control-btn {
@@ -273,9 +275,12 @@
                 font-size: 0.9rem;
                 color: #A3BFFA;
                 display: block;
+                position: absolute;
+                bottom: 5px;
+                width: 100%;
             }
             #game-container {
-                height: 60vh;
+                height: calc(85vh - 20px);
             }
             .popup h2 {
                 font-size: 1.6rem;
@@ -302,7 +307,6 @@
 <body>
     <div class="button-container">
         <a href="timeline.html" class="timeline-link">Career Timeline</a>
-        <a href="editor.html" class="editor-link">Edit Resume</a>
     </div>
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
@@ -337,649 +341,984 @@
     </div>
 
     <script>
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            console.error('Canvas context not supported');
-            throw new Error('Canvas context not supported');
-        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error('Canvas context not supported');
+                alert('This browser does not support the canvas element. Please use a modern browser.');
+                throw new Error('Canvas context not supported');
+            }
 
-        // Responsive canvas size with device pixel ratio
-        const gameContainer = document.getElementById('game-container');
-        const dpr = window.devicePixelRatio || 1;
+            const gameContainer = document.getElementById('game-container');
+            const dpr = window.devicePixelRatio || 1;
 
-        function resizeCanvas() {
-            canvas.width = gameContainer.clientWidth * dpr;
-            canvas.height = gameContainer.clientHeight * dpr;
-            canvas.style.width = `${gameContainer.clientWidth}px`;
-            canvas.style.height = `${gameContainer.clientHeight}px`;
-            ctx.scale(dpr, dpr);
-        }
-
-        resizeCanvas();
-
-        // Handle orientation change
-        window.addEventListener('resize', resizeCanvas);
-        window.addEventListener('orientationchange', resizeCanvas);
-
-        // Scale factors for responsive rendering
-        const baseWidth = 900;
-        const baseHeight = 800;
-        let scaleX = canvas.width / dpr / baseWidth;
-        let scaleY = canvas.height / dpr / baseHeight;
-        if (window.innerWidth <= 767) {
-            scaleX *= 1.2;
-            scaleY *= 1.2;
-        }
-
-        const player = {
-            x: 150 * scaleX,
-            y: 626 * scaleY,
-            width: 24 * scaleX * (window.innerWidth <= 767 ? 1.5 : 1),
-            height: 36 * scaleY * (window.innerWidth <= 767 ? 1.5 : 1),
-            speed: 3 * scaleX * (window.innerWidth <= 767 ? 1.2 : 1),
-            vy: 0,
-            jumpPower: -13 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1),
-            gravity: 0.5 * scaleY,
-            grounded: true
-        };
-
-        const platforms = [
-            { x: 0, y: 650 * scaleY, width: 900 * scaleX, height: 20 * scaleY },
-            { x: 100 * scaleX, y: 450 * scaleY, width: 700 * scaleX, height: 20 * scaleY },
-            { x: 0, y: 250 * scaleY, width: 700 * scaleX, height: 20 * scaleY },
-            { x: 100 * scaleX, y: 600 * scaleY, width: 50 * scaleX, height: 10 * scaleY },
-            { x: 750 * scaleX, y: 600 * scaleY, width: 50 * scaleX, height: 10 * scaleY },
-            { x: 100 * scaleX, y: 400 * scaleY, width: 50 * scaleX, height: 10 * scaleY },
-            { x: 750 * scaleX, y: 400 * scaleY, width: 50 * scaleX, height: 10 * scaleY }
-        ];
-
-        const signs = [
-            { x: 190 * scaleX, y: 510 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Intern at Cerno' },
-            { x: 390 * scaleX, y: 510 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Intern Accountant' },
-            { x: 590 * scaleX, y: 510 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer RASHAYS' },
-            { x: 590 * scaleX, y: 350 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer Consortio' },
-            { x: 390 * scaleX, y: 340 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Team Leader' },
-            { x: 190 * scaleX, y: 330 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Manager' },
-            { x: 190 * scaleX, y: 150 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Data Manager' },
-            { x: 390 * scaleX, y: 150 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Education' },
-            { x: 590 * scaleX, y: 150 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Skills' },
-            { x: 790 * scaleX, y: 150 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Projects' }
-        ];
-
-        let savedLocations = JSON.parse(localStorage.getItem('resumeLocations')) || [
-            { id: 'intern-cerno', title: 'Intern at Cerno', content: '<p>Mar 2013 – Jun 2013 | St. Leonards, Sydney</p><p>Responsibilities:</p><ul><li>Compared bank statements with Navision journals.</li><li>Checked invoice status and payment details.</li><li>Assisted with financial data verification.</li><li>Supported team with administrative tasks.</li></ul>', startYear: 2013, endYear: 2013, layer: 'bottom', x: 200 * scaleX, y: 610 * scaleY, width: 40 * scaleX, height: 40 * scaleY, groundY: 650 * scaleY, timelineOrder: 1 },
-            { id: 'intern-accountant', title: 'Intern Assistant Accountant', content: '<p>Feb 2015 – Nov 2015 | Surry Hills, Sydney</p><p>Responsibilities:</p><ul><li>Managed accounts payable/receivable using MYOB.</li><li>Reconciled bank accounts and payroll sheets.</li><li>Prepared Business Activity Statements (BAS).</li><li>Performed cost center analysis with Excel.</li></ul>', startYear: 2015, endYear: 2015, layer: 'bottom', x: 400 * scaleX, y: 600 * scaleY, width: 40 * scaleX, height: 50 * scaleY, groundY: 650 * scaleY, timelineOrder: 2 },
-            { id: 'payroll-officer-rashays', title: 'Payroll Officer at RASHAYS', content: '<p>Nov 2015 – Oct 2018 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Processed payroll for restaurant staff accurately.</li><li>Maintained employee records and leave balances.</li><li>Ensured compliance with payroll regulations.</li><li>Generated reports using Excel for management.</li></ul>', startYear: 2015, endYear: 2018, layer: 'bottom', x: 600 * scaleX, y: 590 * scaleY, width: 40 * scaleX, height: 60 * scaleY, groundY: 650 * scaleY, timelineOrder: 3 },
-            { id: 'payroll-officer-consortio', title: 'Payroll Officer at Consortio', content: '<p>Oct 2018 – Mar 2021 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Ensured accurate salary disbursement and compliance.</li><li>Managed overpayment recovery and leave records.</li><li>Prepared reports within regulatory timeframes.</li><li>Used Excel and payroll systems for data tasks.</li></ul>', startYear: 2018, endYear: 2021, layer: 'middle', x: 600 * scaleX, y: 410 * scaleY, width: 40 * scaleX, height: 40 * scaleY, groundY: 450 * scaleY, timelineOrder: 4 },
-            { id: 'payroll-team-leader', title: 'Payroll Team Leader at Consortio', content: '<p>Mar 2021 – Nov 2021 | Australia</p><p>Responsibilities:</p><ul><li>Led payroll team to ensure timely processing.</li><li>Implemented process improvements for efficiency.</li><li>Ensured data accuracy across payroll systems.</li><li>Supported compliance with payroll regulations.</li></ul>', startYear: 2021, endYear: 2021, layer: 'middle', x: 400 * scaleX, y: 400 * scaleY, width: 40 * scaleX, height: 50 * scaleY, groundY: 450 * scaleY, timelineOrder: 5 },
-            { id: 'payroll-manager', title: 'Payroll Manager at Consortio', content: '<p>Nov 2021 – Jun 2023 | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Oversaw payroll processing for accuracy and compliance.</li><li>Developed reports using SQL and Excel for insights.</li><li>Streamlined payroll workflows with VBA automation.</li><li>Trained team on payroll systems and data tools.</li></ul>', startYear: 2021, endYear: 2023, layer: 'middle', x: 200 * scaleX, y: 390 * scaleY, width: 40 * scaleX, height: 60 * scaleY, groundY: 450 * scaleY, timelineOrder: 6 },
-            { id: 'data-manager', title: 'Data Manager at Consortio', content: '<p>Jul 2023 – Present | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Led data strategy and analytics initiatives.</li><li>Built and maintained dashboards using Looker Studio.</li><li>Managed large datasets with SQL and Google BigQuery.</li><li>Collaborated with teams to drive data-driven decisions.</li></ul>', startYear: 2023, endYear: 'Present', layer: 'top', x: 200 * scaleX, y: 170 * scaleY, width: 60 * scaleX, height: 80 * scaleY, groundY: 250 * scaleY, timelineOrder: 7, isPresent: true },
-            { id: 'education', title: 'Education', content: '<p>Academic Background:</p><ul><li>Diploma in Accounting, Sydney TAFE, 2013.</li><li>Completed courses in SQL and Data Visualization.</li><li>Certified in Advanced Excel and VBA Programming.</li><li>Studied Business Analytics short course, UNSW, 2020.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 400 * scaleX, y: 210 * scaleY, width: 40 * scaleX, height: 40 * scaleY, groundY: 250 * scaleY },
-            { id: 'skills', title: 'Skills', content: '<p>Core Competencies:</p><ul><li>Data Analysis & Modeling</li><li>SQL & Google BigQuery</li><li>Looker Studio & Data Visualization</li><li>Microsoft Excel & VBA</li><li>Payroll Services & Data Management</li></ul>', startYear: null, endYear: null, layer: 'top', x: 600 * scaleX, y: 210 * scaleY, width: 40 * scaleX, height: 40 * scaleY, groundY: 250 * scaleY },
-            { id: 'projects', title: 'Projects', content: '<p>Key Achievements in Data Analytics:</p><ul><li>Built a dashboard app for payroll insights using Looker Studio.</li><li>Automated data cleaning with VBA scripts for Consortio.</li><li>Designed SQL queries for real-time reporting at RASHAYS.</li><li>Created predictive models for workforce planning.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 800 * scaleX, y: 210 * scaleY, width: 40 * scaleX, height: 40 * scaleY, groundY: 250 * scaleY },
-            { id: 'achievements', title: 'Achievements', content: '<p>Career Highlights:</p><ul><li>Certified Data Analyst, 2023.</li><li>Streamlined payroll systems at Consortio, saving 20% time.</li><li>Completed over 100 dashboards for business insights.</li><li>Mentored payroll team to improve accuracy.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 800 * scaleX, y: 210 * scaleY, width: 40 * scaleX, height: 40 * scaleY, groundY: 250 * scaleY, locked: true }
-        ];
-
-        const locations = savedLocations.map(loc => ({
-            ...loc,
-            radiating: false,
-            pulseVisited: false,
-            draw: drawBuilding,
-            tooltip: loc.startYear ? `${loc.startYear}${loc.endYear === 'Present' ? '–Present' : loc.endYear ? '–' + loc.endYear : ''}: ${loc.title}` : loc.title
-        }));
-
-        const popupsContainer = document.getElementById('popups-container');
-        locations.forEach(loc => {
-            const popup = document.createElement('div');
-            popup.className = 'popup';
-            popup.id = loc.id + '-popup';
-            popup.innerHTML = `
-                <button class="close-btn" onclick="closePopup('${loc.id}-popup')">×</button>
-                <h2>${loc.title}</h2>
-                ${loc.content}
-            `;
-            popupsContainer.appendChild(popup);
-        });
-
-        const cars = [
-            { x: 0, y: 780 * scaleY, width: 40 * scaleX, height: 15 * scaleY, speed: 2 * scaleX, color: '#00DDEB' },
-            { x: 300 * scaleX, y: 780 * scaleY, width: 40 * scaleX, height: 15 * scaleY, speed: -1.5 * scaleX, color: '#A3BFFA' }
-        ];
-        const train = { x: 0, y: 300 * scaleY, width: 100 * scaleX, height: 20 * scaleY, speed: 1.5 * scaleX, color: '#A3BFFA' };
-        const stars = Array.from({ length: 50 }, () => ({
-            x: Math.random() * gameContainer.clientWidth,
-            y: Math.random() * gameContainer.clientHeight * 0.3,
-            radius: Math.random() * 2 * scaleX,
-            opacity: Math.random()
-        }));
-        const distantBuildings = [
-            { x: 0, y: 600 * scaleY, width: 30 * scaleX, height: 50 * scaleY },
-            { x: 50 * scaleX, y: 600 * scaleY, width: 30 * scaleX, height: 60 * scaleY },
-            { x: 100 * scaleX, y: 600 * scaleY, width: 30 * scaleX, height: 40 * scaleY },
-            { x: 800 * scaleX, y: 600 * scaleY, width: 30 * scaleX, height: 50 * scaleY }
-        ];
-        const undergroundTrains = [
-            { x: 0, y: 700 * scaleY, width: 80 * scaleX, height: 20 * scaleY, speed: 1 * scaleX },
-            { x: 200 * scaleX, y: 720 * scaleY, width: 80 * scaleX, height: 20 * scaleY, speed: -0.8 * scaleX },
-            { x: 400 * scaleX, y: 740 * scaleY, width: 80 * scaleX, height: 20 * scaleY, speed: 0.6 * scaleX }
-        ];
-        const undergroundSigns = [
-            { x: 100 * scaleX, y: 680 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Metro' },
-            { x: 300 * scaleX, y: 680 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Station' },
-            { x: 500 * scaleX, y: 680 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Exit' }
-        ];
-
-        function drawBuilding(x, y, width, height, tooltip, groundY, isPresent, loc) {
-            const baseY = groundY - height;
-            ctx.save();
-            const gradient = ctx.createLinearGradient(x, baseY, x, baseY + height);
-            gradient.addColorStop(0, '#2A2A3A');
-            gradient.addColorStop(1, '#3A3A4A');
-            ctx.fillStyle = gradient;
-            ctx.strokeStyle = '#00DDEB';
-            ctx.lineWidth = 0.5 * scaleX;
-
-            try {
-                ctx.beginPath();
-                if (loc.id === 'intern-cerno') {
-                    ctx.moveTo(x, baseY);
-                    ctx.lineTo(x + width, baseY);
-                    ctx.lineTo(x + width, baseY + height);
-                    ctx.lineTo(x, baseY + height);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    ctx.fillStyle = '#00DDEB';
-                    ctx.fillRect(x + width / 2 - 2 * scaleX, baseY - 10 * scaleY, 4 * scaleX, 10 * scaleY);
-                } else if (loc.id === 'intern-accountant') {
-                    ctx.moveTo(x, baseY);
-                    ctx.lineTo(x + width, baseY + 10 * scaleY);
-                    ctx.lineTo(x + width, baseY + height);
-                    ctx.lineTo(x, baseY + height);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                } else if (loc.id === 'payroll-officer-rashays') {
-                    ctx.moveTo(x, baseY + 20 * scaleY);
-                    ctx.lineTo(x, baseY + height);
-                    ctx.lineTo(x + width, baseY + height);
-                    ctx.lineTo(x + width, baseY + 20 * scaleY);
-                    ctx.quadraticCurveTo(x + width / 2, baseY, x, baseY + 20 * scaleY);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                } else if (loc.id === 'payroll-officer-consortio') {
-                    ctx.moveTo(x, baseY);
-                    ctx.lineTo(x + width, baseY);
-                    ctx.lineTo(x + width, baseY + height);
-                    ctx.lineTo(x, baseY + height);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    ctx.fillStyle = '#00DDEB';
-                    ctx.fillRect(x + width / 2 - 5 * scaleX, baseY - 5 * scaleY, 10 * scaleX, (Math.random() * (10 - 5) + 5) * scaleY);
-                } else if (loc.id === 'payroll-team-leader') {
-                    ctx.moveTo(x, baseY + 5 * scaleY);
-                    ctx.lineTo(x + width / 2, baseY);
-                    ctx.lineTo(x + width, baseY + 5 * scaleY);
-                    ctx.lineTo(x + width, baseY + height);
-                    ctx.lineTo(x, baseY + height);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                } else if (loc.id === 'payroll-manager') {
-                    ctx.moveTo(x + 5 * scaleX, baseY);
-                    ctx.lineTo(x + width - 5 * scaleX, baseY);
-                    ctx.lineTo(x + width, baseY + height);
-                    ctx.lineTo(x, baseY + height);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                } else if (loc.id === 'data-manager') {
-                    ctx.moveTo(x, baseY + 20 * scaleY);
-                    ctx.lineTo(x, baseY + height);
-                    ctx.lineTo(x + width, baseY + height);
-                    ctx.lineTo(x + width, baseY + 20 * scaleY);
-                    ctx.quadraticCurveTo(x + width / 2, baseY - 10 * scaleY, x, baseY + 20 * scaleY);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                } else {
-                    ctx.moveTo(x, baseY);
-                    ctx.lineTo(x + width, baseY);
-                    ctx.lineTo(x + width, baseY + height);
-                    ctx.lineTo(x, baseY + height);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    ctx.fillStyle = '#00DDEB';
-                    ctx.fillRect(x + width / 2 - 3 * scaleX, baseY - 5 * scaleY, 6 * scaleX, 5 * scaleY);
+            function resizeCanvas() {
+                try {
+                    const width = gameContainer.clientWidth;
+                    const height = gameContainer.clientHeight;
+                    console.log('Resizing canvas - Width:', width, 'Height:', height, 'DPR:', dpr);
+                    if (width <= 0 || height <= 0) {
+                        console.error('Invalid canvas dimensions:', width, height);
+                        return false;
+                    }
+                    canvas.width = width * dpr;
+                    canvas.height = height * dpr;
+                    canvas.style.width = `${width}px`;
+                    canvas.style.height = `${height}px`;
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.scale(dpr, dpr);
+                    console.log('Canvas pixel dimensions - Width:', canvas.width, 'Height:', canvas.height);
+                    return true;
+                } catch (error) {
+                    console.error('Error resizing canvas:', error);
+                    return false;
                 }
+            }
 
-                const rows = height >= 80 * scaleY ? 8 : 6;
-                const cols = 4;
-                const windowWidth = 6 * scaleX * (window.innerWidth <= 767 ? 1.3 : 1);
-                const windowHeight = 4 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1);
-                let offsetY = height >= 80 * scaleY ? 16 * scaleY : 12 * scaleY;
-                if (loc.id === 'intern-cerno') offsetY = 14 * scaleY;
-                if (loc.id === 'payroll-officer-consortio') offsetY = 10 * scaleY;
-                if (loc.id === 'payroll-officer-rashays') offsetY = 20 * scaleY;
-                const offsetX = (width - cols * windowWidth - (cols - 1) * 2 * scaleX) / 2;
-                for (let i = 0; i < rows; i++) {
-                    for (let j = 0; j < cols; j++) {
-                        let yPos = baseY + offsetY + i * (windowHeight + 2 * scaleY);
-                        if (loc.id === 'intern-accountant') {
-                            yPos += ((cols - 1 - j) / (cols - 1)) * 8 * scaleY;
-                        } else if (loc.id === 'payroll-officer-rashays' && i === 0) {
-                            yPos += Math.abs(j - 1.5) * 3 * scaleY;
-                        } else if (loc.id === 'payroll-manager') {
-                            const taperOffset = (cols - 1 - j) < cols / 2 ? (cols - 1 - j) : j;
-                            yPos += (taperOffset * 1.5 * scaleY);
-                        }
-                        if (yPos + windowHeight <= groundY) {
-                            ctx.fillStyle = '#00DDEB';
-                            ctx.fillRect(
-                                x + offsetX + j * (windowWidth + 2 * scaleX),
-                                yPos,
-                                windowWidth,
-                                windowHeight
-                            );
-                            ctx.strokeStyle = '#FFFFFF';
-                            ctx.lineWidth = 0.5 * scaleX;
-                            ctx.strokeRect(
-                                x + offsetX + j * (windowWidth + 2 * scaleX),
-                                yPos,
-                                windowWidth,
-                                windowHeight
-                            );
+            console.log('Initial game container dimensions - Width:', gameContainer.clientWidth, 'Height:', gameContainer.clientHeight);
+            if (!resizeCanvas()) {
+                alert('Failed to initialize canvas due to invalid container size.');
+                throw new Error('Invalid canvas dimensions');
+            }
+
+            let resizeTimeout;
+            function debouncedResize() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    resizeCanvas();
+                }, 100);
+            }
+
+            window.addEventListener('resize', debouncedResize);
+            window.addEventListener('orientationchange', debouncedResize);
+
+            const baseWidth = 1900;
+            const baseHeight = 1000;
+            let scaleX = canvas.width / dpr / baseWidth || 1;
+            let scaleY = canvas.height / dpr / baseHeight || 1;
+            const scaleFactor = Math.min(scaleX, scaleY) * 1;
+            scaleX = scaleFactor;
+            scaleY = scaleFactor;
+            if (window.innerWidth <= 767) {
+                scaleX *= 1;
+                scaleY *= 1;
+            }
+
+            console.log('ScaleX:', scaleX, 'ScaleY:', scaleY);
+
+            const player = {
+                x: 150 * scaleX,
+                y: 826 * scaleY,
+                width: 32 * scaleX * (window.innerWidth <= 767 ? 1.5 : 1),
+                height: 48 * scaleY * (window.innerWidth <= 767 ? 1.5 : 1),
+                speed: 4 * scaleX * (window.innerWidth <= 767 ? 1.2 : 1),
+                vy: 0,
+                jumpPower: -16 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1),
+                gravity: 0.6 * scaleY,
+                grounded: true
+            };
+
+            const playerImage = new Image();
+            playerImage.src = 'player.png';
+            playerImage.onload = () => {
+                console.log('Player image loaded successfully');
+            };
+            playerImage.onerror = () => {
+                console.error('Failed to load player image, using fallback rendering');
+            };
+
+            const platforms = [
+                { x: 0, y: 850 * scaleY, width: 1900 * scaleX, height: 20 * scaleY },
+                { x: 100 * scaleX, y: 550 * scaleY, width: 1200 * scaleX, height: 20 * scaleY },
+                { x: 0, y: 250 * scaleY, width: 1200 * scaleX, height: 20 * scaleY },
+                { x: 1590 * scaleX, y: 850 * scaleY, width: 200 * scaleX, height: 20 * scaleY },
+                { x: 1590 * scaleX, y: 650 * scaleY, width: 200 * scaleX, height: 20 * scaleY },
+                { x: 1590 * scaleX, y: 450 * scaleY, width: 200 * scaleX, height: 20 * scaleY },
+                { x: 1590 * scaleX, y: 250 * scaleY, width: 200 * scaleX, height: 20 * scaleY },
+                { x: 100 * scaleX, y: 750 * scaleY, width: 50 * scaleX, height: 10 * scaleY },
+                { x: 900 * scaleX, y: 750 * scaleY, width: 50 * scaleX, height: 10 * scaleY },
+                { x: 100 * scaleX, y: 450 * scaleY, width: 50 * scaleX, height: 10 * scaleY },
+                { x: 900 * scaleX, y: 450 * scaleY, width: 50 * scaleX, height: 10 * scaleY }
+            ];
+
+            const resumeLocations = [
+                { id: 'intern-cerno', title: 'Intern at Cerno', content: '<p>Mar 2013 – Jun 2013 | St. Leonards, Sydney</p><p>Responsibilities:</p><ul><li>Compared bank statements with Navision journals.</li><li>Checked invoice status and payment details.</li><li>Assisted with financial data verification.</li><li>Supported team with administrative tasks.</li></ul>', startYear: 2013, endYear: 2013, layer: 'bottom', x: 200 * scaleX, y: 790 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 850 * scaleY, timelineOrder: 1 },
+                { id: 'intern-accountant', title: 'Intern Assistant Accountant', content: '<p>Feb 2015 – Nov 2015 | Surry Hills, Sydney</p><p>Responsibilities:</p><ul><li>Managed accounts payable/receivable using MYOB.</li><li>Reconciled bank accounts and payroll sheets.</li><li>Prepared Business Activity Statements (BAS).</li><li>Performed cost center analysis with Excel.</li></ul>', startYear: 2015, endYear: 2015, layer: 'bottom', x: 663 * scaleX, y: 780 * scaleY, width: 84 * scaleX, height: 84 * scaleY, groundY: 850 * scaleY, timelineOrder: 2 },
+                { id: 'payroll-officer-rashays', title: 'Payroll Officer at RASHAYS', content: '<p>Nov 2015 – Oct 2018 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Processed payroll for restaurant staff accurately.</li><li>Maintained employee records and leave balances.</li><li>Ensured compliance with payroll regulations.</li><li>Generated reports using Excel for management.</li></ul>', startYear: 2015, endYear: 2018, layer: 'bottom', x: 1126 * scaleX, y: 770 * scaleY, width: 96 * scaleX, height: 96 * scaleY, groundY: 850 * scaleY, timelineOrder: 3 },
+                { id: 'payroll-officer-consortio', title: 'Payroll Officer at Consortio', content: '<p>Oct 2018 – Mar 2021 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Ensured accurate salary disbursement and compliance.</li><li>Managed overpayment recovery and leave records.</li><li>Prepared reports within regulatory timeframes.</li><li>Used Excel and payroll systems for data tasks.</li></ul>', startYear: 2018, endYear: 2021, layer: 'middle', x: 1126 * scaleX, y: 490 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 550 * scaleY, timelineOrder: 4 },
+                { id: 'payroll-team-leader', title: 'Payroll Team Leader at Consortio', content: '<p>Mar 2021 – Nov 2021 | Australia</p><p>Responsibilities:</p><ul><li>Led payroll team to ensure timely processing.</li><li>Implemented process improvements for efficiency.</li><li>Ensured data accuracy across payroll systems.</li><li>Supported compliance with payroll regulations.</li></ul>', startYear: 2021, endYear: 2021, layer: 'middle', x: 663 * scaleX, y: 480 * scaleY, width: 84 * scaleX, height: 84 * scaleY, groundY: 550 * scaleY, timelineOrder: 5 },
+                { id: 'payroll-manager', title: 'Payroll Manager at Consortio', content: '<p>Nov 2021 – Jun 2023 | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Oversaw payroll processing for accuracy and compliance.</li><li>Developed reports using SQL and Excel for insights.</li><li>Streamlined payroll workflows with VBA automation.</li><li>Trained team on payroll systems and data tools.</li></ul>', startYear: 2021, endYear: 2023, layer: 'middle', x: 200 * scaleX, y: 470 * scaleY, width: 96 * scaleX, height: 96 * scaleY, groundY: 550 * scaleY, timelineOrder: 6 },
+                { id: 'data-manager', title: 'Data Manager at Consortio', content: '<p>Jul 2023 – Present | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Led data strategy and analytics initiatives.</li><li>Built and maintained dashboards using Looker Studio.</li><li>Managed large datasets with SQL and Google BigQuery.</li><li>Collaborated with teams to drive data-driven decisions.</li></ul>', startYear: 2023, endYear: 'Present', layer: 'top', x: 795 * scaleX, y: 150 * scaleY, width: 108 * scaleX, height: 120 * scaleY, groundY: 250 * scaleY, timelineOrder: 7, isPresent: true },
+                { id: 'hobbies', title: 'Hobbies', content: '<p>Personal Interests:</p><ul><li>Coding personal projects in Python and JavaScript.</li><li>Hiking in national parks around Sydney.</li><li>Photography, focusing on landscapes and cityscapes.</li><li>Playing strategy board games with friends.</li></ul>', startYear: null, endYear: null, layer: 'bottom', x: 1650 * scaleX, y: 810 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 850 * scaleY, isIcon: true },
+                { id: 'education', title: 'Education', content: '<p>Academic Background:</p><ul><li>Diploma in Accounting, Sydney TAFE, 2013.</li><li>Completed courses in SQL and Data Visualization.</li><li>Certified in Advanced Excel and VBA Programming.</li><li>Studied Business Analytics short course, UNSW, 2020.</li></ul>', startYear: null, endYear: null, layer: 'middle', x: 1650 * scaleX, y: 610 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 650 * scaleY, isIcon: true },
+                { id: 'skills', title: 'Skills', content: '<p>Core Competencies:</p><ul><li>Data Analysis & Modeling</li><li>SQL & Google BigQuery</li><li>Looker Studio & Data Visualization</li><li>Microsoft Excel & VBA</li><li>Payroll Services & Data Management</li></ul>', startYear: null, endYear: null, layer: 'top', x: 1650 * scaleX, y: 410 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 450 * scaleY, isIcon: true },
+                { id: 'projects', title: 'Projects', content: '<p>Key Achievements in Data Analytics:</p><ul><li>Built a dashboard app for payroll insights using Looker Studio.</li><li>Automated data cleaning with VBA scripts for Consortio.</li><li>Designed SQL queries for real-time reporting at RASHAYS.</li><li>Created predictive models for workforce planning.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 1650 * scaleX, y: 154 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 250 * scaleY, isIcon: true },
+                { id: 'achievements', title: 'Achievements', content: '<p>Career Highlights:</p><ul><li>Certified Data Analyst, 2023.</li><li>Streamlined payroll systems at Consortio, saving 20% time.</li><li>Completed over 100 dashboards for business insights.</li><li>Mentored payroll team to improve accuracy.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 890 * scaleX, y: 210 * scaleY, width: 50 * scaleX, height: 50 * scaleY, groundY: 250 * scaleY, locked: true }
+            ];
+
+            const locations = resumeLocations.map(loc => ({
+                ...loc,
+                radiating: false,
+                pulseVisited: false,
+                draw: loc.isIcon ? drawIcon : drawBuilding,
+                tooltip: loc.startYear ? `${loc.startYear}${loc.endYear === 'Present' ? '–Present' : loc.endYear ? '–' + loc.endYear : ''}: ${loc.title}` : loc.title
+            }));
+
+            const popupsContainer = document.getElementById('popups-container');
+            locations.forEach(loc => {
+                const popup = document.createElement('div');
+                popup.className = 'popup';
+                popup.id = loc.id + '-popup';
+                popup.innerHTML = `
+                    <button class="close-btn" onclick="closePopup('${loc.id}-popup')">×</button>
+                    <h2>${loc.title}</h2>
+                    ${loc.content}
+                `;
+                popupsContainer.appendChild(popup);
+            });
+
+            const labelOffset = 20 * scaleY; // Distance above the building top
+
+            const signs = [
+                // Bottom layer workplaces
+                { x: 200 * scaleX, y: (850 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Intern at Cerno' }, // Top at 778 * scaleY
+                { x: 663 * scaleX, y: (850 * scaleY - 84 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Intern Accountant' }, // Top at 766 * scaleY
+                { x: 1126 * scaleX, y: (850 * scaleY - 96 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer RASHAYS' }, // Top at 754 * scaleY
+                // Middle layer workplaces
+                { x: 1126 * scaleX, y: (550 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer Consortio' }, // Top at 478 * scaleY
+                { x: 663 * scaleX, y: (550 * scaleY - 84 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Team Leader' }, // Top at 466 * scaleY
+                { x: 200 * scaleX, y: (550 * scaleY - 96 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Manager' }, // Top at 454 * scaleY
+                // Top layer workplace
+                { x: 795 * scaleX, y: (250 * scaleY - 120 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Data Manager' }, // Top at 130 * scaleY
+                // Icons
+                { x: 1650 * scaleX, y: (850 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Hobbies' }, // Top at 778 * scaleY
+                { x: 1650 * scaleX, y: (650 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Education' }, // Top at 578 * scaleY
+                { x: 1650 * scaleX, y: (450 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Skills' }, // Top at 378 * scaleY
+                { x: 1650 * scaleX, y: (250 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Projects' } // Top at 178 * scaleY
+            ];
+
+            const lane1Y = 990 * scaleY;
+            const lane2Y = 1020 * scaleY;
+
+            const cars = [
+                { type: 'sports', x: 0, y: lane1Y, width: 40 * scaleX, height: 20 * scaleY, speed: 3.5 * scaleX, color: '#FF4040', lane: 1, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: 3.5 * scaleX },
+                { type: 'jeep', x: 200 * scaleX, y: lane2Y, width: 50 * scaleX, height: 30 * scaleY, speed: -2.8 * scaleX, color: '#32CD32', lane: 2, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: -2.8 * scaleX },
+                { type: 'suv', x: 400 * scaleX, y: lane1Y, width: 50 * scaleX, height: 25 * scaleY, speed: 2.2 * scaleX, color: '#FF69B4', lane: 1, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: 2.2 * scaleX },
+                { type: 'bus', x: 600 * scaleX, y: lane2Y, width: 70 * scaleX, height: 30 * scaleY, speed: -1.5 * scaleX, color: '#00CED1', lane: 2, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: -1.5 * scaleX },
+                { type: 'sports', x: 800 * scaleX, y: lane1Y, width: 40 * scaleX, height: 20 * scaleY, speed: 3.0 * scaleX, color: '#FFD700', lane: 1, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: 3.0 * scaleX },
+                { type: 'suv', x: 1000 * scaleX, y: lane2Y, width: 50 * scaleX, height: 25 * scaleY, speed: -2.0 * scaleX, color: '#A3BFFA', lane: 2, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: -2.0 * scaleX }
+            ];
+
+            const trafficLights = [
+                { x: 400 * scaleX, y: 970 * scaleY, state: 'green', timer: Math.random() * 300, width: 30 * scaleX, height: 10 * scaleY },
+                { x: 800 * scaleX, y: 970 * scaleY, state: 'red', timer: Math.random() * 300, width: 30 * scaleX, height: 10 * scaleY },
+                { x: 1200 * scaleX, y: 970 * scaleY, state: 'yellow', timer: Math.random() * 300, width: 30 * scaleX, height: 10 * scaleY }
+            ];
+
+            const train = { x: 0, y: 350 * scaleY, width: 120 * scaleX, height: 25 * scaleY, speed: 2 * scaleX, color: '#A3BFFA' };
+            const stars = Array.from({ length: 100 }, () => ({
+                x: Math.random() * gameContainer.clientWidth,
+                y: Math.random() * gameContainer.clientHeight * 0.3,
+                radius: Math.random() * 2 * scaleX,
+                opacity: Math.random()
+            }));
+            const distantBuildings = [
+                { x: 0, y: 800 * scaleY, width: 50 * scaleX, height: 70 * scaleY },
+                { x: 70 * scaleX, y: 800 * scaleY, width: 40 * scaleX, height: 80 * scaleY },
+                { x: 130 * scaleX, y: 800 * scaleY, width: 60 * scaleX, height: 60 * scaleY },
+                { x: 900 * scaleX, y: 800 * scaleY, width: 50 * scaleX, height: 70 * scaleY },
+                { x: 970 * scaleX, y: 800 * scaleY, width: 30 * scaleX, height: 90 * scaleY },
+                { x: 1020 * scaleX, y: 800 * scaleY, width: 40 * scaleX, height: 60 * scaleY }
+            ];
+            const undergroundTrains = [
+                { x: 0, y: 920 * scaleY, width: 100 * scaleX, height: 25 * scaleY, speed: 1.2 * scaleX, color: '#FF8C00' },
+                { x: 400 * scaleX, y: 950 * scaleY, width: 100 * scaleX, height: 25 * scaleY, speed: -1.0 * scaleX, color: '#FF4040' },
+                { x: 800 * scaleX, y: 980 * scaleY, width: 100 * scaleX, height: 25 * scaleY, speed: 0.8 * scaleX, color: '#32CD32' }
+            ];
+            const undergroundSigns = [
+                { x: 150 * scaleX, y: 910 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Metro' },
+                { x: 400 * scaleX, y: 910 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Station' },
+                { x: 650 * scaleX, y: 910 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Exit' }
+            ];
+
+            function drawBuilding(x, y, width, height, tooltip, groundY, isPresent, loc) {
+                try {
+                    const baseY = groundY - height;
+                    ctx.save();
+                    const gradient = ctx.createLinearGradient(x, baseY, x, baseY + height);
+                    gradient.addColorStop(0, '#2A2A3A');
+                    gradient.addColorStop(1, '#3A3A4A');
+                    ctx.fillStyle = gradient;
+                    ctx.strokeStyle = '#00DDEB';
+                    ctx.lineWidth = 0.5 * scaleX;
+
+                    ctx.beginPath();
+                    if (loc.id === 'intern-cerno') {
+                        ctx.moveTo(x, baseY);
+                        ctx.lineTo(x + width, baseY);
+                        ctx.lineTo(x + width, baseY + height);
+                        ctx.lineTo(x, baseY + height);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.fillStyle = '#00DDEB';
+                        ctx.fillRect(x + width / 2 - 2 * scaleX, baseY - 10 * scaleY, 4 * scaleX, 10 * scaleY);
+                    } else if (loc.id === 'intern-accountant') {
+                        ctx.moveTo(x, baseY);
+                        ctx.lineTo(x + width, baseY + 10 * scaleY);
+                        ctx.lineTo(x + width, baseY + height);
+                        ctx.lineTo(x, baseY + height);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    } else if (loc.id === 'payroll-officer-rashays') {
+                        ctx.moveTo(x, baseY + 20 * scaleY);
+                        ctx.lineTo(x, baseY + height);
+                        ctx.lineTo(x + width, baseY + height);
+                        ctx.lineTo(x + width, baseY + 20 * scaleY);
+                        ctx.quadraticCurveTo(x + width / 2, baseY, x, baseY + 20 * scaleY);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    } else if (loc.id === 'payroll-officer-consortio') {
+                        ctx.moveTo(x, baseY);
+                        ctx.lineTo(x + width, baseY);
+                        ctx.lineTo(x + width, baseY + height);
+                        ctx.lineTo(x, baseY + height);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.fillStyle = '#00DDEB';
+                        ctx.fillRect(x + width / 2 - 5 * scaleX, baseY - 5 * scaleY, 10 * scaleX, (Math.random() * (10 - 5) + 5) * scaleY);
+                    } else if (loc.id === 'payroll-team-leader') {
+                        ctx.moveTo(x, baseY + 5 * scaleY);
+                        ctx.lineTo(x + width / 2, baseY);
+                        ctx.lineTo(x + width, baseY + 5 * scaleY);
+                        ctx.lineTo(x + width, baseY + height);
+                        ctx.lineTo(x, baseY + height);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    } else if (loc.id === 'payroll-manager') {
+                        ctx.moveTo(x + 5 * scaleX, baseY);
+                        ctx.lineTo(x + width - 5 * scaleX, baseY);
+                        ctx.lineTo(x + width, baseY + height);
+                        ctx.lineTo(x, baseY + height);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    } else if (loc.id === 'data-manager') {
+                        ctx.moveTo(x, baseY + 20 * scaleY);
+                        ctx.lineTo(x, baseY + height);
+                        ctx.lineTo(x + width, baseY + height);
+                        ctx.lineTo(x + width, baseY + 20 * scaleY);
+                        ctx.quadraticCurveTo(x + width / 2, baseY - 10 * scaleY, x, baseY + 20 * scaleY);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    } else {
+                        ctx.moveTo(x, baseY);
+                        ctx.lineTo(x + width, baseY);
+                        ctx.lineTo(x + width, baseY + height);
+                        ctx.lineTo(x, baseY + height);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.fillStyle = '#00DDEB';
+                        ctx.fillRect(x + width / 2 - 3 * scaleX, baseY - 5 * scaleY, 6 * scaleX, 5 * scaleY);
+                    }
+
+                    const rows = height >= 80 * scaleY ? 8 : 6;
+                    const cols = 4;
+                    const windowWidth = 8 * scaleX * (window.innerWidth <= 767 ? 1.3 : 1);
+                    const windowHeight = 6 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1);
+                    let offsetY = height >= 80 * scaleY ? 20 * scaleY : 16 * scaleY;
+                    if (loc.id === 'intern-cerno') offsetY = 18 * scaleY;
+                    if (loc.id === 'payroll-officer-consortio') offsetY = 14 * scaleY;
+                    if (loc.id === 'payroll-officer-rashays') offsetY = 24 * scaleY;
+                    const offsetX = (width - cols * windowWidth - (cols - 1) * 2 * scaleX) / 2;
+                    for (let i = 0; i < rows; i++) {
+                        for (let j = 0; j < cols; j++) {
+                            let yPos = baseY + offsetY + i * (windowHeight + 2 * scaleY);
+                            if (loc.id === 'intern-accountant') {
+                                yPos += ((cols - 1 - j) / (cols - 1)) * 10 * scaleY;
+                            } else if (loc.id === 'payroll-officer-rashays' && i === 0) {
+                                yPos += Math.abs(j - 1.5) * 4 * scaleY;
+                            } else if (loc.id === 'payroll-manager') {
+                                const taperOffset = (cols - 1 - j) < cols / 2 ? (cols - 1 - j) : j;
+                                yPos += (taperOffset * 2 * scaleY);
+                            }
+                            if (yPos + windowHeight <= groundY) {
+                                ctx.fillStyle = '#00DDEB';
+                                ctx.fillRect(
+                                    x + offsetX + j * (windowWidth + 2 * scaleX),
+                                    yPos,
+                                    windowWidth,
+                                    windowHeight
+                                );
+                                ctx.strokeStyle = '#FFFFFF';
+                                ctx.lineWidth = 0.5 * scaleX;
+                                ctx.strokeRect(
+                                    x + offsetX + j * (windowWidth + 2 * scaleX),
+                                    yPos,
+                                    windowWidth,
+                                    windowHeight
+                                );
+                            }
                         }
                     }
-                }
 
-                if (isPresent) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.fillRect(x + 5 * scaleX, groundY, width, 5 * scaleY);
+
+                    if (isPresent) {
+                        ctx.strokeStyle = '#00DDEB';
+                        ctx.globalAlpha = pulseOpacity;
+                        ctx.lineWidth = 4 * scaleX;
+                        ctx.strokeRect(x - 2 * scaleX, baseY - 2 * scaleY, width + 4 * scaleX, height + 4 * scaleY);
+                        ctx.globalAlpha = 1;
+                    }
+                    if (loc.pulseVisited && !isPresent) {
+                        ctx.strokeStyle = '#00DDEB';
+                        ctx.globalAlpha = pulseOpacity;
+                        ctx.lineWidth = 2 * scaleX;
+                        ctx.strokeRect(x - 1 * scaleX, baseY - 1 * scaleY, width + 2 * scaleX, height + 2 * scaleY);
+                        ctx.globalAlpha = 1;
+                    }
+                    ctx.restore();
+                } catch (error) {
+                    console.error(`Error drawing building ${loc.id}:`, error);
+                }
+            }
+
+            function drawIcon(x, y, width, height, tooltip, groundY, isPresent, loc) {
+                try {
+                    const baseY = groundY - height;
+                    ctx.save();
+                    const gradient = ctx.createLinearGradient(x, baseY, x, baseY + height);
+                    gradient.addColorStop(0, '#00DDEB');
+                    gradient.addColorStop(1, '#00A3B0');
+                    ctx.fillStyle = gradient;
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 2 * scaleX;
+
+                    ctx.beginPath();
+                    if (loc.id === 'hobbies') {
+                        const heartSize = width * 0.8;
+                        const cx = x + width / 2;
+                        const cy = baseY + height / 2;
+                        ctx.moveTo(cx, cy - heartSize / 4);
+                        ctx.bezierCurveTo(
+                            cx + heartSize / 2, cy - heartSize / 2,
+                            cx + heartSize / 2, cy + heartSize / 4,
+                            cx, cy + heartSize / 2
+                        );
+                        ctx.bezierCurveTo(
+                            cx - heartSize / 2, cy + heartSize / 4,
+                            cx - heartSize / 2, cy - heartSize / 2,
+                            cx, cy - heartSize / 4
+                        );
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.globalAlpha = pulseOpacity;
+                        ctx.beginPath();
+                        ctx.arc(cx + heartSize / 3, cy - heartSize / 3, 3 * scaleX, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                    } else if (loc.id === 'education') {
+                        ctx.moveTo(x + width * 0.2, baseY);
+                        ctx.lineTo(x + width * 0.8, baseY);
+                        ctx.lineTo(x + width * 0.8, baseY + height * 0.7);
+                        ctx.quadraticCurveTo(x + width / 2, baseY + height, x + width * 0.2, baseY + height * 0.7);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.strokeStyle = '#FFFFFF';
+                        ctx.lineWidth = 1 * scaleX;
+                        ctx.beginPath();
+                        ctx.moveTo(x + width * 0.3, baseY + height * 0.4);
+                        ctx.lineTo(x + width * 0.7, baseY + height * 0.4);
+                        ctx.moveTo(x + width * 0.3, baseY + height * 0.5);
+                        ctx.lineTo(x + width * 0.7, baseY + height * 0.5);
+                        ctx.stroke();
+                    } else if (loc.id === 'skills') {
+                        const cx = x + width / 2;
+                        const cy = baseY + height / 2;
+                        const r = width * 0.4;
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (i * Math.PI) / 4;
+                            const innerR = r * 0.7;
+                            const outerR = r * 1.2;
+                            ctx.lineTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+                            ctx.lineTo(cx + Math.cos(angle + Math.PI / 8) * outerR, cy + Math.sin(angle + Math.PI / 8) * outerR);
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, 5 * scaleX, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (loc.id === 'projects') {
+                        const cx = x + width / 2;
+                        const cy = baseY + height * 0.7;
+                        ctx.arc(cx, cy, width * 0.3, 0, Math.PI * 2);
+                        ctx.moveTo(cx - width * 0.1, cy + width * 0.3);
+                        ctx.lineTo(cx - width * 0.1, cy + width * 0.5);
+                        ctx.lineTo(cx + width * 0.1, cy + width * 0.5);
+                        ctx.lineTo(cx + width * 0.1, cy + width * 0.3);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.fillStyle = '#FF4040';
+                        ctx.globalAlpha = pulseOpacity;
+                        ctx.beginPath();
+                        ctx.moveTo(cx - width * 0.2, cy);
+                        ctx.lineTo(cx - width * 0.4, cy + width * 0.2);
+                        ctx.lineTo(cx - width * 0.2, cy + width * 0.1);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                    }
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.fillRect(x + 5 * scaleX, groundY, width, 5 * scaleY);
+
+                    ctx.shadowColor = '#00DDEB';
+                    ctx.shadowBlur = 15 * scaleX;
                     ctx.strokeStyle = '#00DDEB';
                     ctx.globalAlpha = pulseOpacity;
                     ctx.lineWidth = 3 * scaleX;
                     ctx.strokeRect(x - 2 * scaleX, baseY - 2 * scaleY, width + 4 * scaleX, height + 4 * scaleY);
                     ctx.globalAlpha = 1;
+                    ctx.shadowBlur = 0;
+
+                    if (isPresent) {
+                        ctx.strokeStyle = '#00DDEB';
+                        ctx.globalAlpha = pulseOpacity;
+                        ctx.lineWidth = 4 * scaleX;
+                        ctx.strokeRect(x - 2 * scaleX, baseY - 2 * scaleY, width + 4 * scaleX, height + 4 * scaleY);
+                        ctx.globalAlpha = 1;
+                    }
+                    if (loc.pulseVisited && !isPresent) {
+                        ctx.strokeStyle = '#00DDEB';
+                        ctx.globalAlpha = pulseOpacity;
+                        ctx.lineWidth = 2 * scaleX;
+                        ctx.strokeRect(x - 1 * scaleX, baseY - 1 * scaleY, width + 2 * scaleX, height + 2 * scaleY);
+                        ctx.globalAlpha = 1;
+                    }
+                    ctx.restore();
+                } catch (error) {
+                    console.error(`Error drawing icon ${loc.id}:`, error);
                 }
-                if (loc.pulseVisited && !isPresent) {
-                    ctx.strokeStyle = '#00DDEB';
-                    ctx.globalAlpha = pulseOpacity;
-                    ctx.lineWidth = 2 * scaleX;
-                    ctx.strokeRect(x - 1 * scaleX, baseY - 1 * scaleY, width + 2 * scaleX, height + 2 * scaleY);
-                    ctx.globalAlpha = 1;
+            }
+
+            function drawCar(car) {
+                try {
+                    ctx.save();
+                    ctx.fillStyle = car.color;
+                    const x = car.x;
+                    const y = car.y;
+                    const w = car.width;
+                    const h = car.height;
+
+                    if (car.type === 'sports') {
+                        ctx.beginPath();
+                        ctx.moveTo(x + w * 0.3, y);
+                        ctx.lineTo(x + w, y + h * 0.4);
+                        ctx.lineTo(x + w, y + h * 0.6);
+                        ctx.lineTo(x + w * 0.3, y + h);
+                        ctx.lineTo(x, y + h * 0.6);
+                        ctx.lineTo(x, y + h * 0.4);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(x + w * 0.3, y + h * 0.3, w * 0.4, h * 0.4);
+                    } else if (car.type === 'jeep') {
+                        ctx.fillRect(x, y, w, h);
+                        ctx.fillStyle = '#666666';
+                        ctx.fillRect(x + w * 0.1, y - h * 0.1, w * 0.8, h * 0.1);
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(x + w * 0.2, y + h * 0.2, w * 0.3, h * 0.3);
+                        ctx.fillRect(x + w * 0.55, y + h * 0.2, w * 0.3, h * 0.3);
+                    } else if (car.type === 'suv') {
+                        ctx.beginPath();
+                        ctx.moveTo(x + w * 0.1, y);
+                        ctx.lineTo(x + w * 0.9, y);
+                        ctx.quadraticCurveTo(x + w, y + h * 0.2, x + w, y + h * 0.4);
+                        ctx.lineTo(x + w, y + h * 0.6);
+                        ctx.quadraticCurveTo(x + w, y + h * 0.8, x + w * 0.9, y + h);
+                        ctx.lineTo(x + w * 0.1, y + h);
+                        ctx.quadraticCurveTo(x, y + h * 0.8, x, y + h * 0.6);
+                        ctx.lineTo(x, y + h * 0.4);
+                        ctx.quadraticCurveTo(x, y + h * 0.2, x + w * 0.1, y);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(x + w * 0.2, y + h * 0.2, w * 0.3, h * 0.3);
+                        ctx.fillRect(x + w * 0.55, y + h * 0.2, w * 0.3, h * 0.3);
+                    } else if (car.type === 'bus') {
+                        ctx.fillRect(x, y, w, h);
+                        ctx.fillStyle = '#FFFFFF';
+                        for (let i = 0; i < 4; i++) {
+                            ctx.fillRect(x + w * 0.15 + i * w * 0.2, y + h * 0.2, w * 0.1, h * 0.3);
+                        }
+                    }
+                    ctx.restore();
+                } catch (error) {
+                    console.error('Error drawing car:', error);
                 }
-            } catch (error) {
-                console.error(`Error drawing building ${loc.id}:`, error);
-                ctx.fillRect(x, baseY, width, height);
-                ctx.strokeRect(x, baseY, width, height);
             }
-            ctx.restore();
-        }
 
-        function drawCar(car) {
-            ctx.fillStyle = car.color;
-            ctx.fillRect(car.x, car.y, car.width, car.height);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(car.x + 5 * scaleX, car.y + 2 * scaleY, 8 * scaleX, 5 * scaleY);
-            ctx.fillRect(car.x + 27 * scaleX, car.y + 2 * scaleY, 8 * scaleX, 5 * scaleY);
-        }
+            function drawTrafficLight(light) {
+                try {
+                    ctx.save();
+                    const x = light.x;
+                    const y = light.y;
+                    const w = light.width;
+                    const h = light.height;
 
-        function drawTrain(train) {
-            ctx.fillStyle = train.color;
-            ctx.fillRect(train.x, train.y, train.width, train.height);
-            ctx.fillStyle = '#FFFFFF';
-            for (let i = 0; i < 3; i++) {
-                ctx.fillRect(train.x + 10 * scaleX + i * 30 * scaleX, train.y + 2 * scaleY, 10 * scaleX, 10 * scaleY);
+                    ctx.fillStyle = '#333333';
+                    ctx.fillRect(x, y, w, h);
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 1 * scaleX;
+                    ctx.strokeRect(x, y, w, h);
+
+                    const lightSize = h * 0.6;
+                    const spacing = (w - 3 * lightSize) / 4;
+                    const redX = x + spacing;
+                    const yellowX = x + spacing * 2 + lightSize;
+                    const greenX = x + spacing * 3 + lightSize * 2;
+                    const lightY = y + h / 2 - lightSize / 2;
+
+                    ctx.beginPath();
+                    ctx.arc(redX + lightSize / 2, lightY + lightSize / 2, lightSize / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = light.state === 'red' ? '#FF0000' : '#660000';
+                    ctx.fill();
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(yellowX + lightSize / 2, lightY + lightSize / 2, lightSize / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = light.state === 'yellow' ? '#FFFF00' : '#666600';
+                    ctx.fill();
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(greenX + lightSize / 2, lightY + lightSize / 2, lightSize / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = light.state === 'green' ? '#00FF00' : '#006600';
+                    ctx.fill();
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.stroke();
+
+                    ctx.restore();
+                } catch (error) {
+                    console.error('Error drawing traffic light:', error);
+                }
             }
-        }
 
-        function drawUndergroundTrain(train) {
-            ctx.fillStyle = '#FF8C00';
-            ctx.fillRect(train.x, train.y, train.width, train.height);
-            ctx.fillStyle = '#FFFFE0';
-            for (let i = 0; i < 2; i++) {
-                ctx.fillRect(train.x + 10 * scaleX + i * 30 * scaleX, train.y + 2 * scaleY, 10 * scaleX, 10 * scaleY);
+            function drawTrain(train) {
+                try {
+                    ctx.save();
+                    ctx.fillStyle = train.color;
+                    ctx.fillRect(train.x, train.y, train.width, train.height);
+                    ctx.fillStyle = '#FFFFFF';
+                    for (let i = 0; i < 3; i++) {
+                        ctx.fillRect(train.x + 12 * scaleX + i * 36 * scaleX, train.y + 3 * scaleY, 12 * scaleX, 12 * scaleY);
+                    }
+                    ctx.restore();
+                } catch (error) {
+                    console.error('Error drawing train:', error);
+                }
             }
-        }
+
+            function drawUndergroundTrain(train) {
+                try {
+                    ctx.save();
+                    ctx.fillStyle = train.color;
+                    ctx.fillRect(train.x, train.y, train.width, train.height);
+                    ctx.fillStyle = '#FFFFE0';
+                    for (let i = 0; i < 2; i++) {
+                        ctx.fillRect(train.x + 12 * scaleX + i * 36 * scaleX, train.y + 3 * scaleY, 12 * scaleX, 12 * scaleY);
+                    }
+                    ctx.restore();
+                } catch (error) {
+                    console.error('Error drawing underground train:', error);
+                }
+            }
 
             function drawSign(sign) {
-    ctx.font = `${12 * scaleX}px Inter`;
-    ctx.fillStyle = '#FFFFFF'; // Explicitly set text color to white
-    ctx.fillText(sign.label, sign.x + 2 * scaleX, sign.y + 1 * scaleY);
-}
-      //  function drawSign(sign) {
-        //   ctx.fillStyle = '#00DDEB';
-          //  ctx.fillRect(sign.x, sign.y, sign.width, sign.height);
-           // ctx.font = `${12 * scaleX}px Inter`;
-          // ctx.fillStyle = '#FFFFFF';
-            //ctx.fillText(sign.label, sign.x + 2* scaleX, sign.y+1  * scaleY);
-        //}
-
-        function drawDistantBuilding(building) {
-            ctx.fillStyle = '#1E3A5F';
-            ctx.fillRect(building.x, building.y - building.height, building.width, building.height);
-        }
-
-        let xp = 0;
-        const visited = new Set();
-        let achievementsUnlocked = false;
-        let pulseOpacity = 0.4;
-        let pulseDirection = 1;
-        let nearestLoc = null;
-        let minDistance = Infinity;
-
-        const tooltip = document.createElement('div');
-        tooltip.className = 'tooltip';
-        document.body.appendChild(tooltip);
-
-        const keys = {};
-        document.addEventListener('keydown', (e) => {
-            keys[e.key.toLowerCase()] = true;
-            if (e.code === 'Space' && player.grounded) {
-                player.vy = player.jumpPower;
-                player.grounded = false;
+                try {
+                    console.log('Drawing sign:', sign.label, 'at x:', sign.x, 'y:', sign.y);
+                    ctx.save();
+                    ctx.font = `${14 * scaleX}px 'Inter', sans-serif`;
+                    const textMetrics = ctx.measureText(sign.label);
+                    const textWidth = textMetrics.width;
+                    const textHeight = 14 * scaleY;
+                    ctx.fillStyle = 'rgba(20, 20, 30, 0.8)';
+                    ctx.fillRect(
+                        sign.x,
+                        sign.y - textHeight,
+                        textWidth + 4 * scaleX,
+                        textHeight + 2 * scaleY
+                    );
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.globalAlpha = Math.sin(Date.now() / 500) * 0.3 + 0.7;
+                    ctx.fillText(sign.label, sign.x + 2 * scaleX, sign.y + 1 * scaleY);
+                    ctx.globalAlpha = 1;
+                    ctx.restore();
+                } catch (error) {
+                    console.error('Error drawing sign:', error);
+                }
             }
-            if (e.code === 'Enter') {
+
+            function drawDistantBuilding(building) {
+                try {
+                    ctx.save();
+                    ctx.fillStyle = '#1E3A5F';
+                    ctx.fillRect(building.x, building.y - building.height, building.width, building.height);
+                    ctx.restore();
+                } catch (error) {
+                    console.error('Error drawing distant building:', error);
+                }
+            }
+
+            let xp = 0;
+            const visited = new Set();
+            let achievementsUnlocked = false;
+            let pulseOpacity = 0.4;
+            let pulseDirection = 1;
+            let nearestLoc = null;
+            let minDistance = Infinity;
+
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip';
+            document.body.appendChild(tooltip);
+
+            const keys = {};
+            document.addEventListener('keydown', (e) => {
+                keys[e.key.toLowerCase()] = true;
+                if (e.code === 'Space' && player.grounded) {
+                    player.vy = player.jumpPower;
+                    player.grounded = false;
+                }
+                if (e.code === 'Enter') {
+                    checkInteraction();
+                }
+                if (e.code === 'Escape') closeAllPopups();
+            });
+            document.addEventListener('keyup', (e) => {
+                keys[e.key.toLowerCase()] = false;
+            });
+
+            const leftBtn = document.getElementById('left-btn');
+            const rightBtn = document.getElementById('right-btn');
+            const jumpBtn = document.getElementById('jump-btn');
+            const interactBtn = document.getElementById('interact-btn');
+
+            leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['a'] = true; });
+            leftBtn.addEventListener('touchend', () => keys['a'] = false);
+            rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['d'] = true; });
+            rightBtn.addEventListener('touchend', () => keys['d'] = false);
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (player.grounded) {
+                    player.vy = player.jumpPower;
+                    player.grounded = false;
+                }
+            });
+            interactBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
                 checkInteraction();
-            }
-            if (e.code === 'Escape') closeAllPopups();
-        });
-        document.addEventListener('keyup', (e) => {
-            keys[e.key.toLowerCase()] = false;
-        });
+            });
 
-        // Touch Controls
-        const leftBtn = document.getElementById('left-btn');
-        const rightBtn = document.getElementById('right-btn');
-        const jumpBtn = document.getElementById('jump-btn');
-        const interactBtn = document.getElementById('interact-btn');
-
-        leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['a'] = true; });
-        leftBtn.addEventListener('touchend', () => keys['a'] = false);
-        rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['d'] = true; });
-        rightBtn.addEventListener('touchend', () => keys['d'] = false);
-        jumpBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (player.grounded) {
-                player.vy = player.jumpPower;
-                player.grounded = false;
-            }
-        });
-        interactBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            checkInteraction();
-        });
-
-        function update() {
-            try {
-                let isMoving = false;
-                if (keys['arrowleft'] || keys['a']) {
-                    player.x -= player.speed;
-                    isMoving = true;
+            function checkInteraction() {
+                if (nearestLoc && minDistance < 60 * scaleX) {
+                    closeAllPopups();
+                    document.getElementById(nearestLoc.id + '-popup').classList.add('active');
+                    document.getElementById('game-canvas').classList.add('blur');
                 }
-                if (keys['arrowright'] || keys['d']) {
-                    player.x += player.speed;
-                    isMoving = true;
-                }
+            }
 
-                player.vy += player.gravity;
-                player.y += player.vy;
+            function update() {
+                try {
+                    console.log('Update loop running');
+                    console.log('Canvas dimensions - Width:', canvas.width / dpr, 'Height:', canvas.height / dpr);
 
-                player.grounded = false;
-                const allPlatforms = [
-                    ...platforms,
-                    ...locations.map(loc => ({
-                        x: loc.x,
-                        y: loc.groundY - loc.height,
-                        width: loc.width,
-                        height: loc.height
-                    })),
-                    ...cars.map(car => ({
-                        x: car.x,
-                        y: car.y,
-                        width: car.width,
-                        height: car.height
-                    })),
-                    { x: train.x, y: train.y, width: train.width, height: train.height }
-                ];
-
-                allPlatforms.forEach(platform => {
-                    if (
-                        player.x + player.width > platform.x &&
-                        player.x < platform.x + platform.width &&
-                        player.y + player.height > platform.y &&
-                        player.y + player.height - player.vy <= platform.y &&
-                        player.vy >= 0
-                    ) {
-                        player.y = platform.y - player.height;
-                        player.vy = 0;
-                        player.grounded = true;
+                    let isMoving = false;
+                    if (keys['arrowleft'] || keys['a']) {
+                        player.x -= player.speed;
+                        isMoving = true;
                     }
-                });
+                    if (keys['arrowright'] || keys['d']) {
+                        player.x += player.speed;
+                        isMoving = true;
+                    }
 
-                player.x = Math.max(0, Math.min(gameContainer.clientWidth - player.width, player.x));
-                player.y = Math.min(650 * scaleY - player.height, player.y);
+                    player.vy += player.gravity;
+                    player.y += player.vy;
 
-                pulseOpacity += pulseDirection * 0.02;
-                if (pulseOpacity >= 0.8 || pulseOpacity <= 0.4) pulseDirection *= -1;
+                    player.grounded = false;
+                    const allPlatforms = [
+                        ...platforms,
+                        ...locations.map(loc => ({
+                            x: loc.x,
+                            y: loc.groundY - loc.height,
+                            width: loc.width,
+                            height: loc.height
+                        })),
+                        ...cars.map(car => ({
+                            x: car.x,
+                            y: car.y,
+                            width: car.width,
+                            height: car.height
+                        })),
+                        { x: train.x, y: train.y, width: train.width, height: train.height }
+                    ];
 
-                cars.forEach(car => {
-                    car.x += car.speed;
-                    if (car.x > gameContainer.clientWidth) car.x = -car.width;
-                    if (car.x + car.width < 0) car.x = gameContainer.clientWidth;
-                });
-                train.x += train.speed;
-                if (train.x > gameContainer.clientWidth) train.x = -train.width;
-                undergroundTrains.forEach(train => {
+                    allPlatforms.forEach(platform => {
+                        if (
+                            player.x + player.width > platform.x &&
+                            player.x < platform.x + platform.width &&
+                            player.y + player.height > platform.y &&
+                            player.y + player.height - player.vy <= platform.y &&
+                            player.vy >= 0
+                        ) {
+                            player.y = platform.y - player.height;
+                            player.vy = 0;
+                            player.grounded = true;
+                        }
+                    });
+
+                    player.x = Math.max(0, Math.min(gameContainer.clientWidth - player.width, player.x));
+                    player.y = Math.min(850 * scaleY - player.height, player.y);
+
+                    pulseOpacity += pulseDirection * 0.02;
+                    if (pulseOpacity >= 0.8 || pulseOpacity <= 0.4) pulseDirection *= -1;
+
+                    trafficLights.forEach(light => {
+                        light.timer -= 1;
+                        if (light.timer <= 0) {
+                            if (light.state === 'green') {
+                                light.state = 'yellow';
+                                light.timer = 120;
+                            } else if (light.state === 'yellow') {
+                                light.state = 'red';
+                                light.timer = 300;
+                            } else if (light.state === 'red') {
+                                light.state = 'green';
+                                light.timer = 300;
+                            }
+                        }
+                    });
+
+                    const minDistanceBetweenCars = 1.5;
+                    cars.forEach(car => {
+                        let shouldStop = false;
+                        trafficLights.forEach(light => {
+                            const distance = car.speed > 0 ? light.x - (car.x + car.width) : car.x - light.x;
+                            if (distance > 0 && distance < 50 * scaleX && (light.state === 'red' || light.state === 'yellow')) {
+                                shouldStop = true;
+                            }
+                        });
+
+                        if (shouldStop) {
+                            car.speed = 0;
+                        } else {
+                            car.speed = car.baseSpeed;
+                        }
+
+                        cars.forEach(otherCar => {
+                            if (car === otherCar || car.lane !== otherCar.lane) return;
+                            const dx = car.x - otherCar.x;
+                            const minDx = (car.width + otherCar.width) * minDistanceBetweenCars / 2;
+                            if (Math.abs(dx) < minDx && dx !== 0) {
+                                if (dx > 0) {
+                                    if (car.speed > otherCar.speed) {
+                                        car.speed = Math.max(car.speed * 0.8, otherCar.speed);
+                                    }
+                                } else {
+                                    if (car.speed < otherCar.speed) {
+                                        car.speed = Math.min(car.speed * 1.2, car.baseSpeed);
+                                    }
+                                }
+                            }
+                        });
+
+                        car.x += car.speed;
+                        if (car.x > gameContainer.clientWidth) car.x = -car.width;
+                        if (car.x + car.width < 0) car.x = gameContainer.clientWidth;
+
+                        car.laneChangeTimer -= 1;
+                        if (car.laneChangeTimer <= 0) {
+                            const shouldChangeLane = Math.random() < 0.3;
+                            if (shouldChangeLane) {
+                                let canChange = true;
+                                const targetLane = car.lane === 1 ? 2 : 1;
+                                cars.forEach(otherCar => {
+                                    if (otherCar.lane !== targetLane) return;
+                                    const dx = Math.abs(otherCar.x - car.x);
+                                    if (dx < car.width * 2) canChange = false;
+                                });
+                                cars.forEach(otherCar => {
+                                    if (otherCar === car || otherCar.lane !== car.lane) return;
+                                    const dx = Math.abs(otherCar.x - car.x);
+                                    if (dx < car.width * 1.5) canChange = false;
+                                });
+                                if (canChange) {
+                                    car.lane = targetLane;
+                                    car.y = targetLane === 1 ? lane1Y : lane2Y;
+                                }
+                            }
+                            car.laneChangeTimer = Math.random() * 300 + 100;
+                        }
+                    });
+
                     train.x += train.speed;
                     if (train.x > gameContainer.clientWidth) train.x = -train.width;
                     if (train.x + train.width < 0) train.x = gameContainer.clientWidth;
-                });
-                stars.forEach(star => {
-                    star.opacity = (star.opacity + 0.01) % 1;
-                });
-
-                const isPopupActive = Array.from(document.querySelectorAll('.popup, .welcome-popup')).some(p => p.classList.contains('active'));
-                canvas.classList.toggle('blur', isPopupActive);
-
-                ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-
-                const gradient = ctx.createLinearGradient(0, 0, 0, gameContainer.clientHeight);
-                gradient.addColorStop(0, '#14141E');
-                gradient.addColorStop(0.8, '#1E3A5F');
-                gradient.addColorStop(1, '#3A3A4A');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, gameContainer.clientWidth, gameContainer.clientHeight);
-
-                stars.forEach(star => {
-                    ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
-                    ctx.beginPath();
-                    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-
-                distantBuildings.forEach(drawDistantBuilding);
-
-                ctx.fillStyle = '#3A3A4A';
-                ctx.fillRect(0, 290 * scaleY, gameContainer.clientWidth, 5 * scaleY);
-                ctx.fillStyle = '#00DDEB';
-                ctx.fillRect(0, 295 * scaleY, gameContainer.clientWidth, 5 * scaleY);
-
-                drawTrain(train);
-
-                ctx.fillStyle = '#3A3A4A';
-                platforms.forEach(platform => {
-                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-                    ctx.strokeStyle = '#00DDEB';
-                    ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
-                });
-
-                nearestLoc = null;
-                minDistance = Infinity;
-                locations.forEach((loc, index) => {
-                    if (loc.locked && !achievementsUnlocked) return;
-                    const dx = player.x + player.width / 2 - (loc.x + loc.width / 2);
-                    const dy = player.y + player.height / 2 - (loc.groundY - loc.height / 2);
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const isNear = distance < 50 * scaleX;
-
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        nearestLoc = loc;
-                    }
-
-                    loc.draw(loc.x, loc.groundY, loc.width, loc.height, loc.tooltip, loc.groundY, loc.isPresent, loc);
-
-                    if (isNear && !visited.has(loc.id) && !loc.locked) {
-                        xp += 10;
-                        visited.add(loc.id);
-                        loc.pulseVisited = true;
-                        if (xp >= 100 && !achievementsUnlocked) {
-                            achievementsUnlocked = true;
-                            locations.find(l => l.id === 'achievements').locked = false;
-                            document.getElementById('achievements-popup').classList.add('active');
-                        }
-                    }
-                    if (visited.has(loc.id) && !loc.pulseVisited) {
-                        loc.pulseVisited = true;
-                    }
-                });
-
-                const timelineLocs = locations.filter(loc => loc.timelineOrder).sort((a, b) => a.timelineOrder - b.timelineOrder);
-                ctx.strokeStyle = '#00DDEB';
-                ctx.globalAlpha = 0.1;
-                ctx.lineWidth = 2 * scaleX;
-                ctx.beginPath();
-                ctx.moveTo(timelineLocs[0].x + timelineLocs[0].width / 2, timelineLocs[0].groundY - timelineLocs[0].height / 2);
-                ctx.lineTo(timelineLocs[1].x + timelineLocs[1].width / 2, timelineLocs[1].groundY - timelineLocs[1].height / 2);
-                ctx.lineTo(timelineLocs[2].x + timelineLocs[2].width / 2, timelineLocs[2].groundY - timelineLocs[2].height / 2);
-                ctx.lineTo(timelineLocs[3].x + timelineLocs[3].width / 2, timelineLocs[3].groundY - timelineLocs[3].height / 2);
-                ctx.lineTo(timelineLocs[4].x + timelineLocs[4].width / 2, timelineLocs[4].groundY - timelineLocs[4].height / 2);
-                ctx.lineTo(timelineLocs[5].x + timelineLocs[5].width / 2, timelineLocs[5].groundY - timelineLocs[5].height / 2);
-                ctx.lineTo(timelineLocs[6].x + timelineLocs[6].width / 2, timelineLocs[6].groundY - timelineLocs[6].height / 2);
-                ctx.stroke();
-                ctx.globalAlpha = 0.7;
-                ctx.lineWidth = 1 * scaleX;
-                ctx.beginPath();
-                ctx.moveTo(timelineLocs[0].x + timelineLocs[0].width / 2, timelineLocs[0].groundY - timelineLocs[0].height / 2);
-                ctx.lineTo(timelineLocs[1].x + timelineLocs[1].width / 2, timelineLocs[1].groundY - timelineLocs[1].height / 2);
-                ctx.lineTo(timelineLocs[2].x + timelineLocs[2].width / 2, timelineLocs[2].groundY - timelineLocs[2].height / 2);
-                ctx.lineTo(timelineLocs[3].x + timelineLocs[3].width / 2, timelineLocs[3].groundY - timelineLocs[3].height / 2);
-                ctx.lineTo(timelineLocs[4].x + timelineLocs[4].width / 2, timelineLocs[4].groundY - timelineLocs[4].height / 2);
-                ctx.lineTo(timelineLocs[5].x + timelineLocs[5].width / 2, timelineLocs[5].groundY - timelineLocs[5].height / 2);
-                ctx.lineTo(timelineLocs[6].x + timelineLocs[6].width / 2, timelineLocs[6].groundY - timelineLocs[6].height / 2);
-                ctx.stroke();
-
-                signs.forEach(drawSign);
-
-                ctx.font = `${16 * scaleX}px Inter`;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillText('2013–2017', 10 * scaleX, 620 * scaleY);
-                ctx.fillText('2018–2022', 10 * scaleX, 420 * scaleY);
-                ctx.fillText('2023–Present', 10 * scaleX, 220 * scaleY);
-
-                ctx.fillStyle = 'rgba(60, 60, 80, 0.8)';
-                ctx.fillRect(0, 650 * scaleY, gameContainer.clientWidth, 150 * scaleY);
-                ctx.fillStyle = '#3A3A4A';
-                ctx.fillRect(0, 650 * scaleY, gameContainer.clientWidth, 150 * scaleY);
-                for (let y = 700 * scaleY; y <= 740 * scaleY; y += 20 * scaleY) {
-                    ctx.fillStyle = '#2A2A3A';
-                    ctx.fillRect(0, y - 5 * scaleY, gameContainer.clientWidth, 2 * scaleY);
-                    ctx.fillStyle = '#FFC107';
-                    ctx.fillRect(0, y - 3 * scaleY, gameContainer.clientWidth, 2 * scaleY);
-                }
-                undergroundTrains.forEach(drawUndergroundTrain);
-                undergroundSigns.forEach(drawSign);
-                for (let x = 50 * scaleX; x < gameContainer.clientWidth; x += 100 * scaleX) {
-                    ctx.fillStyle = '#FFFFE0';
-                    ctx.beginPath();
-                    ctx.arc(x, 670 * scaleY, 5 * scaleX, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                cars.forEach(drawCar);
-
-                ctx.font = `${18 * scaleX}px Inter`;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(`XP: ${xp}/100`, 10 * scaleX, 20 * scaleY);
-
-                const progressFill = document.getElementById('progress-fill');
-                const progressPercent = (visited.size / (locations.length - 1)) * 100;
-                progressFill.style.width = `${progressPercent}%`;
-
-                if (nearestLoc && minDistance < 100 * scaleX) {
-                    tooltip.style.display = 'block';
-                    tooltip.textContent = nearestLoc.tooltip;
-                    tooltip.style.left = `${nearestLoc.x + nearestLoc.width + 10 * scaleX}px`;
-                    tooltip.style.top = `${nearestLoc.groundY - nearestLoc.height}px`;
-                } else {
-                    tooltip.style.display = 'none';
-                }
-
-                ctx.fillStyle = '#FFDAB9';
-                ctx.fillRect(player.x + 6 * scaleX, player.y + 6 * scaleY, 12 * scaleX, 12 * scaleY);
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(player.x + 6 * scaleX, player.y + 6 * scaleY, 12 * scaleX, 6 * scaleY);
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(player.x + 6 * scaleX, player.y + 18 * scaleY, 12 * scaleX, 18 * scaleY);
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(player.x + 9 * scaleX, player.y + 18 * scaleY, 6 * scaleX, 12 * scaleY);
-                ctx.fillStyle = '#00DDEB';
-                ctx.fillRect(player.x + 10.5 * scaleX, player.y + 24 * scaleY, 3 * scaleX, 6 * scaleY);
-
-                requestAnimationFrame(update);
-            } catch (error) {
-                console.error('Error in update loop:', error);
-            }
-        }
-
-        function checkInteraction() {
-            locations.forEach(loc => {
-                if (loc.locked && !achievementsUnlocked) return;
-                const dx = player.x + player.width / 2 - (loc.x + loc.width / 2);
-                const dy = player.y + player.height / 2 - (loc.groundY - loc.height / 2);
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < 50 * scaleX) {
-                    const popup = document.getElementById(loc.id + '-popup');
-                    if (popup) document.getElementById(loc.id + '-popup').classList.add('active');
-                    else console.error(`Popup for ${loc.id} not found`);
-                }
-            });
-        }
-
-        window.addEventListener('storage', (event) => {
-            if (event.key === 'resumeLocations') {
-                savedLocations = JSON.parse(event.newValue) || savedLocations;
-                locations.length = 0;
-                savedLocations.forEach(loc => {
-                    locations.push({
-                        ...loc,
-                        radiating: false,
-                        pulseVisited: false,
-                        draw: drawBuilding,
-                        tooltip: loc.startYear ? `${loc.startYear}${loc.endYear === 'Present' ? '–Present' : loc.endYear ? '–' + loc.endYear : ''}: ${loc.title}` : loc.title
+                    undergroundTrains.forEach(train => {
+                        train.x += train.speed;
+                        if (train.x > gameContainer.clientWidth) train.x = -train.width;
+                        if (train.x + train.width < 0) train.x = gameContainer.clientWidth;
                     });
-                });
+                    stars.forEach(star => {
+                        star.opacity = (star.opacity + 0.01) % 1;
+                    });
 
-                popupsContainer.innerHTML = '';
-                locations.forEach(loc => {
-                    const popup = document.createElement('div');
-                    popup.className = 'popup';
-                    popup.id = loc.id + '-popup';
-                    popup.innerHTML = `
-                        <button class="close-btn" onclick="closePopup('${loc.id}-popup')">×</button>
-                        <h2>${loc.title}</h2>
-                        ${loc.content}
-                    `;
-                    popupsContainer.appendChild(popup);
-                });
+                    const isPopupActive = Array.from(document.querySelectorAll('.popup, .welcome-popup')).some(p => p.classList.contains('active'));
+                    canvas.classList.toggle('blur', isPopupActive);
+
+                    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+                    const gradient = ctx.createLinearGradient(0, 0, 0, gameContainer.clientHeight);
+                    gradient.addColorStop(0, '#14141E');
+                    gradient.addColorStop(0.8, '#1E3A5F');
+                    gradient.addColorStop(1, '#3A3A4A');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, gameContainer.clientWidth, gameContainer.clientHeight);
+
+                    stars.forEach(star => {
+                        ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                        ctx.beginPath();
+                        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+
+                    distantBuildings.forEach(drawDistantBuilding);
+
+                    ctx.fillStyle = '#3A3A4A';
+                    ctx.fillRect(0, 340 * scaleY, gameContainer.clientWidth, 6 * scaleY);
+                    ctx.fillStyle = '#00DDEB';
+                    ctx.fillRect(0, 346 * scaleY, gameContainer.clientWidth, 6 * scaleY);
+
+                    drawTrain(train);
+
+                    ctx.fillStyle = '#3A3A4A';
+                    platforms.forEach(platform => {
+                        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                        ctx.strokeStyle = '#00DDEB';
+                        ctx.lineWidth = 2 * scaleX;
+                        ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 800) * 0.3;
+                        ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+                        ctx.globalAlpha = 1;
+                    });
+
+                    ctx.fillStyle = 'rgba(60, 60, 80, 0.6)';
+                    ctx.fillRect(0, 920 * scaleY, gameContainer.clientWidth, 60 * scaleY);
+                    ctx.fillStyle = '#3A3A4A';
+                    ctx.fillRect(0, 920 * scaleY, gameContainer.clientWidth, 60 * scaleY);
+                    for (let y = 920 * scaleY; y <= 980 * scaleY; y += 30 * scaleY) {
+                        ctx.fillStyle = '#2A2A3A';
+                        ctx.fillRect(0, y - 6 * scaleY, gameContainer.clientWidth, 3 * scaleY);
+                        ctx.fillStyle = '#FFC107';
+                        ctx.fillRect(0, y - 3 * scaleY, gameContainer.clientWidth, 3 * scaleY);
+                    }
+                    undergroundTrains.forEach(drawUndergroundTrain);
+                    undergroundSigns.forEach(drawSign);
+                    for (let x = 60 * scaleX; x < gameContainer.clientWidth; x += 120 * scaleX) {
+                        ctx.fillStyle = '#FFFFE0';
+                        ctx.beginPath();
+                        ctx.arc(x, 910 * scaleY, 6 * scaleX, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    ctx.fillStyle = '#555555';
+                    ctx.fillRect(0, 980 * scaleY, gameContainer.clientWidth, 70 * scaleY);
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 2 * scaleX;
+                    ctx.setLineDash([10 * scaleX, 10 * scaleX]);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 1005 * scaleY);
+                    ctx.lineTo(gameContainer.clientWidth, 1005 * scaleY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    trafficLights.forEach(drawTrafficLight);
+                    cars.forEach(drawCar);
+
+                    nearestLoc = null;
+                    minDistance = Infinity;
+                    locations.forEach((loc, index) => {
+                        if (loc.locked && !achievementsUnlocked) return;
+                        const dx = player.x + player.width / 2 - (loc.x + loc.width / 2);
+                        const dy = player.y + player.height / 2 - (loc.groundY - loc.height / 2);
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const isNear = distance < 60 * scaleX;
+
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestLoc = loc;
+                        }
+
+                        loc.draw(loc.x, loc.groundY, loc.width, loc.height, loc.tooltip, loc.groundY, loc.isPresent, loc);
+
+                        if (isNear && !visited.has(loc.id) && !loc.locked) {
+                            xp += 10;
+                            visited.add(loc.id);
+                            loc.pulseVisited = true;
+                            if (xp >= 100 && !achievementsUnlocked) {
+                                achievementsUnlocked = true;
+                                locations.find(l => l.id === 'achievements').locked = false;
+                                document.getElementById('achievements-popup').classList.add('active');
+                                document.getElementById('game-canvas').classList.add('blur');
+                            }
+                        }
+                    });
+
+                    if (playerImage.complete && playerImage.naturalWidth !== 0) {
+                        ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
+                    } else {
+                        ctx.fillStyle = '#FF4040';
+                        ctx.fillRect(player.x, player.y, player.width, player.height);
+                    }
+
+                    const progressFill = document.getElementById('progress-fill');
+                    const progressPercent = Math.min(xp, 100);
+                    progressFill.style.width = `${progressPercent}%`;
+
+                    if (nearestLoc && minDistance < 60 * scaleX) {
+                        tooltip.style.display = 'block';
+                        tooltip.textContent = nearestLoc.tooltip;
+                        tooltip.style.left = `${(nearestLoc.x + nearestLoc.width / 2) * dpr}px`;
+                        tooltip.style.top = `${(nearestLoc.groundY - nearestLoc.height - 20 * scaleY) * dpr}px`;
+                    } else {
+                        tooltip.style.display = 'none';
+                    }
+
+                    // Draw signs last to ensure they are on top
+                    signs.forEach(drawSign);
+
+                    requestAnimationFrame(update);
+                } catch (error) {
+                    console.error('Error in update loop:', error);
+                }
             }
-        });
 
-        update();
+            update();
+        });
     </script>
 </body>
 </html>
