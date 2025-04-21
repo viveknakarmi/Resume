@@ -45,24 +45,26 @@
     <title>My Interactive Resume City</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
+        html, body {
             margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
             font-family: 'Inter', sans-serif;
             background: linear-gradient(180deg, #14141E, #1E3A5F);
             color: #FFFFFF;
-            height: 100vh;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            overflow: hidden;
+            align-items: center;
             touch-action: none;
         }
         #game-container {
             position: relative;
-            width: calc(100vw - 20px);
-            height: calc(90vh - 20px);
-            margin: 10px;
+            width: 100%;
+            height: 100%;
+            max-width: 1280px;
+            max-height: 720px;
             border: 2px solid #00DDEB;
             border-radius: 8px;
             overflow: hidden;
@@ -78,17 +80,17 @@
         #game-canvas.blur {
             filter: blur(3px);
         }
-        .popup {
+        .popup, .welcome-popup {
             display: none;
             position: fixed;
-            top: 70%;
+            top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) scale(0.8);
             background: rgba(20, 20, 30, 0.95);
             border: 1px solid #00DDEB;
             border-radius: 8px;
             padding: 1.5rem;
-            width: 85vw;
+            width: 85%;
             max-width: 400px;
             min-height: 200px;
             max-height: 70vh;
@@ -96,24 +98,23 @@
             z-index: 10;
             box-shadow: 0 0 20px rgba(0, 221, 235, 0.5);
             opacity: 0;
-            transition: transform 0.3s ease, opacity 0.3s ease, top 0.3s ease;
+            transition: transform 0.3s ease, opacity 0.3s ease;
         }
-        .popup.active {
+        .popup.active, .welcome-popup.active {
             display: block;
-            top: 50%;
             transform: translate(-50%, -50%) scale(1);
             opacity: 1;
         }
         .popup:hover {
             transform: translate(-50%, -50%) scale(1.02);
         }
-        .popup h2 {
+        .popup h2, .welcome-popup h2 {
             color: #FFFFFF;
             font-size: 1.8rem;
             margin: 0 0 0.8rem;
             font-weight: 700;
         }
-        .popup p, .popup li {
+        .popup p, .popup li, .welcome-popup p {
             color: #A3BFFA;
             font-size: 1rem;
             line-height: 1.6;
@@ -124,11 +125,11 @@
             margin: 1rem 0;
             padding-left: 1.5rem;
         }
-        .popup a {
+        .popup a, .welcome-popup a {
             color: #00DDEB;
             text-decoration: none;
         }
-        .popup a:hover {
+        .popup a:hover, .welcome-popup a:hover {
             text-decoration: underline;
         }
         .close-btn {
@@ -187,32 +188,11 @@
             top: 10px;
             display: flex;
             justify-content: center;
-            width: 100vw;
+            width: 100%;
             z-index: 15;
         }
         .timeline-link:hover {
             background: #00B7C2;
-        }
-        .welcome-popup {
-            position: fixed;
-            top: 70%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            background: rgba(20, 20, 30, 0.95);
-            border: 1px solid #00DDEB;
-            border-radius: 8px;
-            padding: 1.5rem;
-            width: 85vw;
-            max-width: 400px;
-            z-index: 20;
-            opacity: 0;
-            transition: transform 0.3s ease, opacity 0.3s ease, top 0.3s ease;
-        }
-        .welcome-popup.active {
-            display: block;
-            top: 50%;
-            transform: translate(-50%, -50%) scale(1);
-            opacity: 1;
         }
         .tooltip {
             position: absolute;
@@ -228,7 +208,7 @@
         .controls {
             position: fixed;
             bottom: 15px;
-            width: 100vw;
+            width: 100%;
             display: flex;
             justify-content: space-between;
             padding: 0 10px;
@@ -280,12 +260,12 @@
                 width: 100%;
             }
             #game-container {
-                height: calc(85vh - 20px);
+                max-height: 85vh;
             }
-            .popup h2 {
+            .popup h2, .welcome-popup h2 {
                 font-size: 1.6rem;
             }
-            .popup p, .popup li {
+            .popup p, .popup li, .welcome-popup p {
                 font-size: 0.95rem;
             }
         }
@@ -352,60 +332,169 @@
 
             const gameContainer = document.getElementById('game-container');
             const dpr = window.devicePixelRatio || 1;
+            const designWidth = 1900;
+            const designHeight = 1000;
 
-            function resizeCanvas() {
+            let scaleX = 1, scaleY = 1, offsetX = 0, offsetY = 0;
+
+            function resizeCanvas(attempts = 5, delay = 500) {
                 try {
-                    const width = gameContainer.clientWidth;
-                    const height = gameContainer.clientHeight;
-                    console.log('Resizing canvas - Width:', width, 'Height:', height, 'DPR:', dpr);
-                    if (width <= 0 || height <= 0) {
-                        console.error('Invalid canvas dimensions:', width, height);
-                        return false;
+                    let containerWidth = gameContainer.clientWidth;
+                    let containerHeight = gameContainer.clientHeight;
+
+                    if (containerWidth <= 0 || containerHeight <= 0 || isNaN(containerWidth) || isNaN(containerHeight)) {
+                        console.warn('Initial canvas resize failed, using fallback dimensions');
+                        containerWidth = 1280;
+                        containerHeight = 720;
                     }
-                    canvas.width = width * dpr;
-                    canvas.height = height * dpr;
-                    canvas.style.width = `${width}px`;
-                    canvas.style.height = `${height}px`;
+
+                    if (containerWidth <= 0 || containerHeight <= 0 || isNaN(containerWidth) || isNaN(containerHeight)) {
+                        if (attempts > 0) {
+                            console.log('Invalid container dimensions (Width:', containerWidth, 'Height:', containerHeight, '), retrying... Attempts left:', attempts);
+                            setTimeout(() => resizeCanvas(attempts - 1, delay), delay);
+                            return false;
+                        } else {
+                            console.warn('Failed to get valid container dimensions after retries, keeping fallback size');
+                            return false;
+                        }
+                    }
+
+                    console.log('Resizing canvas - Width:', containerWidth, 'Height:', containerHeight, 'DPR:', dpr);
+
+                    canvas.width = containerWidth * dpr;
+                    canvas.height = containerHeight * dpr;
+                    canvas.style.width = `${containerWidth}px`;
+                    canvas.style.height = `${containerHeight}px`;
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
                     ctx.scale(dpr, dpr);
-                    console.log('Canvas pixel dimensions - Width:', canvas.width, 'Height:', canvas.height);
+
+                    const aspectRatio = designWidth / designHeight;
+                    const containerAspectRatio = containerWidth / containerHeight;
+
+                    if (containerAspectRatio > aspectRatio) {
+                        scaleY = containerHeight / designHeight;
+                        scaleX = scaleY;
+                        offsetX = (containerWidth - designWidth * scaleX) / 2;
+                        offsetY = 0;
+                    } else {
+                        scaleX = containerWidth / designWidth;
+                        scaleY = scaleX;
+                        offsetX = 0;
+                        offsetY = (containerHeight - designHeight * scaleY) / 2;
+                    }
+
+                    // Scale game elements
+                    player.x = 150 * scaleX;
+                    player.y = 826 * scaleY;
+                    player.width = 32 * scaleX * (window.innerWidth <= 767 ? 1.5 : 1);
+                    player.height = 48 * scaleY * (window.innerWidth <= 767 ? 1.5 : 1);
+                    player.speed = 4 * scaleX * (window.innerWidth <= 767 ? 1.2 : 1);
+                    player.jumpPower = -16 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1);
+                    player.gravity = 0.6 * scaleY;
+
+                    platforms.forEach(p => {
+                        p.x = p.originalX * scaleX;
+                        p.y = p.originalY * scaleY;
+                        p.width = p.originalWidth * scaleX;
+                        p.height = p.originalHeight * scaleY;
+                    });
+
+                    signs.forEach(s => {
+                        s.x = s.originalX * scaleX;
+                        s.y = s.originalY * scaleY;
+                        s.width = s.originalWidth * scaleX;
+                        s.height = s.originalHeight * scaleY;
+                    });
+
+                    locations.forEach(loc => {
+                        loc.x = loc.originalX * scaleX;
+                        loc.y = loc.originalY * scaleY;
+                        loc.width = loc.originalWidth * scaleX;
+                        loc.height = loc.originalHeight * scaleY;
+                        loc.groundY = loc.originalGroundY * scaleY;
+                    });
+
+                    cars.forEach(car => {
+                        car.x = car.originalX * scaleX;
+                        car.y = car.originalY * scaleY;
+                        car.width = car.originalWidth * scaleX;
+                        car.height = car.originalHeight * scaleY;
+                        car.speed = car.originalSpeed * scaleX;
+                    });
+
+                    train.x = train.originalX * scaleX;
+                    train.y = train.originalY * scaleY;
+                    train.width = train.originalWidth * scaleX;
+                    train.height = train.originalHeight * scaleY;
+                    train.speed = train.originalSpeed * scaleX;
+
+                    stars.forEach(star => {
+                        star.x = star.originalX * containerWidth;
+                        star.y = star.originalY * containerHeight;
+                        star.radius = star.originalRadius * scaleX;
+                    });
+
+                    distantBuildings.forEach(db => {
+                        db.x = db.originalX * scaleX;
+                        db.y = db.originalY * scaleY;
+                        db.width = db.originalWidth * scaleX;
+                        db.height = db.originalHeight * scaleY;
+                    });
+
+                    undergroundTrains.forEach(ut => {
+                        ut.x = ut.originalX * scaleX;
+                        ut.y = ut.originalY * scaleY;
+                        ut.width = ut.originalWidth * scaleX;
+                        ut.height = ut.originalHeight * scaleY;
+                        ut.speed = ut.originalSpeed * scaleX;
+                    });
+
+                    undergroundSigns.forEach(us => {
+                        us.x = us.originalX * scaleX;
+                        us.y = us.originalY * scaleY;
+                        us.width = us.originalWidth * scaleX;
+                        us.height = us.originalHeight * scaleY;
+                    });
+
+                    neonArrows.forEach(na => {
+                        na.x = na.originalX * scaleX;
+                        na.y = na.originalY * scaleY;
+                        na.width = na.originalWidth * scaleX;
+                        na.height = na.originalHeight * scaleY;
+                    });
+
+                    console.log('Canvas resize successful - ScaleX:', scaleX, 'ScaleY:', scaleY, 'OffsetX:', offsetX, 'OffsetY:', offsetY);
                     return true;
                 } catch (error) {
-                    console.error('Error resizing canvas:', error);
+                    console.error('Error resizing canvas:', error.message, 'Stack:', error.stack);
+                    if (attempts > 0) {
+                        console.log('Retrying resize... Attempts left:', attempts);
+                        setTimeout(() => resizeCanvas(attempts - 1, delay), delay);
+                    } else {
+                        console.warn('Failed to resize canvas after retries, keeping fallback size');
+                    }
                     return false;
                 }
             }
 
-            console.log('Initial game container dimensions - Width:', gameContainer.clientWidth, 'Height:', gameContainer.clientHeight);
-            if (!resizeCanvas()) {
-                alert('Failed to initialize canvas due to invalid container size.');
-                throw new Error('Invalid canvas dimensions');
-            }
+            // Initial canvas setup with fallback dimensions
+            canvas.width = 1280 * dpr;
+            canvas.height = 720 * dpr;
+            canvas.style.width = '1280px';
+            canvas.style.height = '720px';
+            ctx.scale(dpr, dpr);
+
+            // Delay initial resize to ensure DOM stability
+            setTimeout(() => resizeCanvas(), 500);
 
             let resizeTimeout;
             function debouncedResize() {
                 clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    resizeCanvas();
-                }, 100);
+                resizeTimeout = setTimeout(resizeCanvas, 100);
             }
 
             window.addEventListener('resize', debouncedResize);
             window.addEventListener('orientationchange', debouncedResize);
-
-            const baseWidth = 1900;
-            const baseHeight = 1000;
-            let scaleX = canvas.width / dpr / baseWidth || 1;
-            let scaleY = canvas.height / dpr / baseHeight || 1;
-            const scaleFactor = Math.min(scaleX, scaleY) * 1;
-            scaleX = scaleFactor;
-            scaleY = scaleFactor;
-            if (window.innerWidth <= 767) {
-                scaleX *= 1;
-                scaleY *= 1;
-            }
-
-            console.log('ScaleX:', scaleX, 'ScaleY:', scaleY);
 
             const player = {
                 x: 150 * scaleX,
@@ -425,37 +514,70 @@
                 console.log('Player image loaded successfully');
             };
             playerImage.onerror = () => {
-                console.error('Failed to load player image, using fallback rendering');
+                console.error('Failed to load player image');
             };
 
             const platforms = [
-                { x: 0, y: 850 * scaleY, width: 1900 * scaleX, height: 20 * scaleY },
-                { x: 100 * scaleX, y: 550 * scaleY, width: 1200 * scaleX, height: 20 * scaleY },
-                { x: 0, y: 250 * scaleY, width: 1200 * scaleX, height: 20 * scaleY },
-                { x: 1590 * scaleX, y: 850 * scaleY, width: 200 * scaleX, height: 20 * scaleY },
-                { x: 1590 * scaleX, y: 650 * scaleY, width: 200 * scaleX, height: 20 * scaleY },
-                { x: 1590 * scaleX, y: 450 * scaleY, width: 200 * scaleX, height: 20 * scaleY },
-                { x: 1590 * scaleX, y: 250 * scaleY, width: 200 * scaleX, height: 20 * scaleY },
-                { x: 100 * scaleX, y: 750 * scaleY, width: 50 * scaleX, height: 10 * scaleY },
-                { x: 900 * scaleX, y: 750 * scaleY, width: 50 * scaleX, height: 10 * scaleY },
-                { x: 100 * scaleX, y: 450 * scaleY, width: 50 * scaleX, height: 10 * scaleY },
-                { x: 900 * scaleX, y: 450 * scaleY, width: 50 * scaleX, height: 10 * scaleY }
-            ];
+                { originalX: 0, originalY: 850, originalWidth: 1900, originalHeight: 20 },
+                { originalX: 100, originalY: 550, originalWidth: 1200, originalHeight: 20 },
+                { originalX: 0, originalY: 250, originalWidth: 1200, originalHeight: 20 },
+                { originalX: 1590, originalY: 850, originalWidth: 200, originalHeight: 20 },
+                { originalX: 1590, originalY: 650, originalWidth: 200, originalHeight: 20 },
+                { originalX: 1590, originalY: 450, originalWidth: 200, originalHeight: 20 },
+                { originalX: 1590, originalY: 250, originalWidth: 200, originalHeight: 20 },
+                { originalX: 100, originalY: 750, originalWidth: 50, originalHeight: 10 },
+                { originalX: 900, originalY: 750, originalWidth: 50, originalHeight: 10 },
+                { originalX: 100, originalY: 450, originalWidth: 50, originalHeight: 10 },
+                { originalX: 900, originalY: 450, originalWidth: 50, originalHeight: 10 }
+            ].map(p => ({
+                ...p,
+                x: p.originalX * scaleX,
+                y: p.originalY * scaleY,
+                width: p.originalWidth * scaleX,
+                height: p.originalHeight * scaleY
+            }));
+
+            const signs = [
+                { originalX: 190, originalY: 710, originalWidth: 20, originalHeight: 10, label: 'Intern at Cerno' },
+                { originalX: 653, originalY: 710, originalWidth: 20, originalHeight: 10, label: 'Intern Accountant' },
+                { originalX: 1116, originalY: 710, originalWidth: 20, originalHeight: 10, label: 'Payroll Officer RASHAYS' },
+                { originalX: 1116, originalY: 510, originalWidth: 20, originalHeight: 10, label: 'Payroll Officer Consortio' },
+                { originalX: 653, originalY: 510, originalWidth: 20, originalHeight: 10, label: 'Payroll Team Leader' },
+                { originalX: 190, originalY: 510, originalWidth: 20, originalHeight: 10, label: 'Payroll Manager' },
+                { originalX: 785, originalY: 210, originalWidth: 20, originalHeight: 10, label: 'Data Manager' },
+                { originalX: 1640, originalY: 810, originalWidth: 20, originalHeight: 10, label: 'Hobbies' },
+                { originalX: 1640, originalY: 610, originalWidth: 20, originalHeight: 10, label: 'Education' },
+                { originalX: 1640, originalY: 410, originalWidth: 20, originalHeight: 10, label: 'Skills' },
+                { originalX: 1640, originalY: 210, originalWidth: 20, originalHeight: 10, label: 'Projects' }
+            ].map(s => ({
+                ...s,
+                x: s.originalX * scaleX,
+                y: s.originalY * scaleY,
+                width: s.originalWidth * scaleX,
+                height: s.originalHeight * scaleY
+            }));
 
             const resumeLocations = [
-                { id: 'intern-cerno', title: 'Intern at Cerno', content: '<p>Mar 2013 – Jun 2013 | St. Leonards, Sydney</p><p>Responsibilities:</p><ul><li>Compared bank statements with Navision journals.</li><li>Checked invoice status and payment details.</li><li>Assisted with financial data verification.</li><li>Supported team with administrative tasks.</li></ul>', startYear: 2013, endYear: 2013, layer: 'bottom', x: 200 * scaleX, y: 790 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 850 * scaleY, timelineOrder: 1 },
-                { id: 'intern-accountant', title: 'Intern Assistant Accountant', content: '<p>Feb 2015 – Nov 2015 | Surry Hills, Sydney</p><p>Responsibilities:</p><ul><li>Managed accounts payable/receivable using MYOB.</li><li>Reconciled bank accounts and payroll sheets.</li><li>Prepared Business Activity Statements (BAS).</li><li>Performed cost center analysis with Excel.</li></ul>', startYear: 2015, endYear: 2015, layer: 'bottom', x: 663 * scaleX, y: 780 * scaleY, width: 84 * scaleX, height: 84 * scaleY, groundY: 850 * scaleY, timelineOrder: 2 },
-                { id: 'payroll-officer-rashays', title: 'Payroll Officer at RASHAYS', content: '<p>Nov 2015 – Oct 2018 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Processed payroll for restaurant staff accurately.</li><li>Maintained employee records and leave balances.</li><li>Ensured compliance with payroll regulations.</li><li>Generated reports using Excel for management.</li></ul>', startYear: 2015, endYear: 2018, layer: 'bottom', x: 1126 * scaleX, y: 770 * scaleY, width: 96 * scaleX, height: 96 * scaleY, groundY: 850 * scaleY, timelineOrder: 3 },
-                { id: 'payroll-officer-consortio', title: 'Payroll Officer at Consortio', content: '<p>Oct 2018 – Mar 2021 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Ensured accurate salary disbursement and compliance.</li><li>Managed overpayment recovery and leave records.</li><li>Prepared reports within regulatory timeframes.</li><li>Used Excel and payroll systems for data tasks.</li></ul>', startYear: 2018, endYear: 2021, layer: 'middle', x: 1126 * scaleX, y: 490 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 550 * scaleY, timelineOrder: 4 },
-                { id: 'payroll-team-leader', title: 'Payroll Team Leader at Consortio', content: '<p>Mar 2021 – Nov 2021 | Australia</p><p>Responsibilities:</p><ul><li>Led payroll team to ensure timely processing.</li><li>Implemented process improvements for efficiency.</li><li>Ensured data accuracy across payroll systems.</li><li>Supported compliance with payroll regulations.</li></ul>', startYear: 2021, endYear: 2021, layer: 'middle', x: 663 * scaleX, y: 480 * scaleY, width: 84 * scaleX, height: 84 * scaleY, groundY: 550 * scaleY, timelineOrder: 5 },
-                { id: 'payroll-manager', title: 'Payroll Manager at Consortio', content: '<p>Nov 2021 – Jun 2023 | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Oversaw payroll processing for accuracy and compliance.</li><li>Developed reports using SQL and Excel for insights.</li><li>Streamlined payroll workflows with VBA automation.</li><li>Trained team on payroll systems and data tools.</li></ul>', startYear: 2021, endYear: 2023, layer: 'middle', x: 200 * scaleX, y: 470 * scaleY, width: 96 * scaleX, height: 96 * scaleY, groundY: 550 * scaleY, timelineOrder: 6 },
-                { id: 'data-manager', title: 'Data Manager at Consortio', content: '<p>Jul 2023 – Present | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Led data strategy and analytics initiatives.</li><li>Built and maintained dashboards using Looker Studio.</li><li>Managed large datasets with SQL and Google BigQuery.</li><li>Collaborated with teams to drive data-driven decisions.</li></ul>', startYear: 2023, endYear: 'Present', layer: 'top', x: 795 * scaleX, y: 150 * scaleY, width: 108 * scaleX, height: 120 * scaleY, groundY: 250 * scaleY, timelineOrder: 7, isPresent: true },
-                { id: 'hobbies', title: 'Hobbies', content: '<p>Personal Interests:</p><ul><li>Coding personal projects in Python and JavaScript.</li><li>Hiking in national parks around Sydney.</li><li>Photography, focusing on landscapes and cityscapes.</li><li>Playing strategy board games with friends.</li></ul>', startYear: null, endYear: null, layer: 'bottom', x: 1650 * scaleX, y: 810 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 850 * scaleY, isIcon: true },
-                { id: 'education', title: 'Education', content: '<p>Academic Background:</p><ul><li>Diploma in Accounting, Sydney TAFE, 2013.</li><li>Completed courses in SQL and Data Visualization.</li><li>Certified in Advanced Excel and VBA Programming.</li><li>Studied Business Analytics short course, UNSW, 2020.</li></ul>', startYear: null, endYear: null, layer: 'middle', x: 1650 * scaleX, y: 610 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 650 * scaleY, isIcon: true },
-                { id: 'skills', title: 'Skills', content: '<p>Core Competencies:</p><ul><li>Data Analysis & Modeling</li><li>SQL & Google BigQuery</li><li>Looker Studio & Data Visualization</li><li>Microsoft Excel & VBA</li><li>Payroll Services & Data Management</li></ul>', startYear: null, endYear: null, layer: 'top', x: 1650 * scaleX, y: 410 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 450 * scaleY, isIcon: true },
-                { id: 'projects', title: 'Projects', content: '<p>Key Achievements in Data Analytics:</p><ul><li>Built a dashboard app for payroll insights using Looker Studio.</li><li>Automated data cleaning with VBA scripts for Consortio.</li><li>Designed SQL queries for real-time reporting at RASHAYS.</li><li>Created predictive models for workforce planning.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 1650 * scaleX, y: 154 * scaleY, width: 72 * scaleX, height: 72 * scaleY, groundY: 250 * scaleY, isIcon: true },
-                { id: 'achievements', title: 'Achievements', content: '<p>Career Highlights:</p><ul><li>Certified Data Analyst, 2023.</li><li>Streamlined payroll systems at Consortio, saving 20% time.</li><li>Completed over 100 dashboards for business insights.</li><li>Mentored payroll team to improve accuracy.</li></ul>', startYear: null, endYear: null, layer: 'top', x: 890 * scaleX, y: 210 * scaleY, width: 50 * scaleX, height: 50 * scaleY, groundY: 250 * scaleY, locked: true }
-            ];
+                { id: 'intern-cerno', title: 'Intern at Cerno', content: '<p>Mar 2013 – Jun 2013 | St. Leonards, Sydney</p><p>Responsibilities:</p><ul><li>Compared bank statements with Navision journals.</li><li>Checked invoice status and payment details.</li><li>Assisted with financial data verification.</li><li>Supported team with administrative tasks.</li></ul>', startYear: 2013, endYear: 2013, layer: 'bottom', originalX: 200, originalY: 790, originalWidth: 72, originalHeight: 72, originalGroundY: 850, timelineOrder: 1 },
+                { id: 'intern-accountant', title: 'Intern Assistant Accountant', content: '<p>Feb 2015 – Nov 2015 | Surry Hills, Sydney</p><p>Responsibilities:</p><ul><li>Managed accounts payable/receivable using MYOB.</li><li>Reconciled bank accounts and payroll sheets.</li><li>Prepared Business Activity Statements (BAS).</li><li>Performed cost center analysis with Excel.</li></ul>', startYear: 2015, endYear: 2015, layer: 'bottom', originalX: 663, originalY: 780, originalWidth: 84, originalHeight: 84, originalGroundY: 850, timelineOrder: 2 },
+                { id: 'payroll-officer-rashays', title: 'Payroll Officer at RASHAYS', content: '<p>Nov 2015 – Oct 2018 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Processed payroll for restaurant staff accurately.</li><li>Maintained employee records and leave balances.</li><li>Ensured compliance with payroll regulations.</li><li>Generated reports using Excel for management.</li></ul>', startYear: 2015, endYear: 2018, layer: 'bottom', originalX: 1126, originalY: 770, originalWidth: 96, originalHeight: 96, originalGroundY: 850, timelineOrder: 3 },
+                { id: 'payroll-officer-consortio', title: 'Payroll Officer at Consortio', content: '<p>Oct 2018 – Mar 2021 | Sydney, Australia</p><p>Responsibilities:</p><ul><li>Ensured accurate salary disbursement and compliance.</li><li>Managed overpayment recovery and leave records.</li><li>Prepared reports within regulatory timeframes.</li><li>Used Excel and payroll systems for data tasks.</li></ul>', startYear: 2018, endYear: 2021, layer: 'middle', originalX: 1126, originalY: 490, originalWidth: 72, originalHeight: 72, originalGroundY: 550, timelineOrder: 4 },
+                { id: 'payroll-team-leader', title: 'Payroll Team Leader at Consortio', content: '<p>Mar 2021 – Nov 2021 | Australia</p><p>Responsibilities:</p><ul><li>Led payroll team to ensure timely processing.</li><li>Implemented process improvements for efficiency.</li><li>Ensured data accuracy across payroll systems.</li><li>Supported compliance with payroll regulations.</li></ul>', startYear: 2021, endYear: 2021, layer: 'middle', originalX: 663, originalY: 480, originalWidth: 84, originalHeight: 84, originalGroundY: 550, timelineOrder: 5 },
+                { id: 'payroll-manager', title: 'Payroll Manager at Consortio', content: '<p>Nov 2021 – Jun 2023 | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Oversaw payroll processing for accuracy and compliance.</li><li>Developed reports using SQL and Excel for insights.</li><li>Streamlined payroll workflows with VBA automation.</li><li>Trained team on payroll systems and data tools.</li></ul>', startYear: 2021, endYear: 2023, layer: 'middle', originalX: 200, originalY: 470, originalWidth: 96, originalHeight: 96, originalGroundY: 550, timelineOrder: 6 },
+                { id: 'data-manager', title: 'Data Manager at Consortio', content: '<p>Jul 2023 – Present | Sydney, NSW, Australia</p><p>Responsibilities:</p><ul><li>Led data strategy and analytics initiatives.</li><li>Built and maintained dashboards using Looker Studio.</li><li>Managed large datasets with SQL and Google BigQuery.</li><li>Collaborated with teams to drive data-driven decisions.</li></ul>', startYear: 2023, endYear: 'Present', layer: 'top', originalX: 795, originalY: 150, originalWidth: 108, originalHeight: 120, originalGroundY: 250, timelineOrder: 7, isPresent: true },
+                { id: 'hobbies', title: 'Hobbies', content: '<p>Personal Interests:</p><ul><li>Coding personal projects in Python and JavaScript.</li><li>Hiking in national parks around Sydney.</li><li>Photography, focusing on landscapes and cityscapes.</li><li>Playing strategy board games with friends.</li></ul>', startYear: null, endYear: null, layer: 'bottom', originalX: 1650, originalY: 810, originalWidth: 96, originalHeight: 96, originalGroundY: 850, isIcon: true },
+                { id: 'education', title: 'Education', content: '<p>Academic Background:</p><ul><li>Diploma in Accounting, Sydney TAFE, 2013.</li><li>Completed courses in SQL and Data Visualization.</li><li>Certified in Advanced Excel and VBA Programming.</li><li>Studied Business Analytics short course, UNSW, 2020.</li></ul>', startYear: null, endYear: null, layer: 'middle', originalX: 1650, originalY: 610, originalWidth: 96, originalHeight: 96, originalGroundY: 650, isIcon: true },
+                { id: 'skills', title: 'Skills', content: '<p>Core Competencies:</p><ul><li>Data Analysis & Modeling</li><li>SQL & Google BigQuery</li><li>Looker Studio & Data Visualization</li><li>Microsoft Excel & VBA</li><li>Payroll Services & Data Management</li></ul>', startYear: null, endYear: null, layer: 'top', originalX: 1650, originalY: 410, originalWidth: 96, originalHeight: 96, originalGroundY: 450, isIcon: true },
+                { id: 'projects', title: 'Projects', content: '<p>Key Achievements in Data Analytics:</p><ul><li>Built a dashboard app for payroll insights using Looker Studio.</li><li>Automated data cleaning with VBA scripts for Consortio.</li><li>Designed SQL queries for real-time reporting at RASHAYS.</li><li>Created predictive models for workforce planning.</li></ul>', startYear: null, endYear: null, layer: 'top', originalX: 1650, originalY: 154, originalWidth: 96, originalHeight: 96, originalGroundY: 250, isIcon: true },
+                { id: 'achievements', title: 'Achievements', content: '<p>Career Highlights:</p><ul><li>Certified Data Analyst, 2023.</li><li>Streamlined payroll systems at Consortio, saving 20% time.</li><li>Completed over 100 dashboards for business insights.</li><li>Mentored payroll team to improve accuracy.</li></ul>', startYear: null, endYear: null, layer: 'top', originalX: 890, originalY: 210, originalWidth: 50, originalHeight: 50, originalGroundY: 250, locked: true }
+            ].map(loc => ({
+                ...loc,
+                x: loc.originalX * scaleX,
+                y: loc.originalY * scaleY,
+                width: loc.originalWidth * scaleX,
+                height: loc.originalHeight * scaleY,
+                groundY: loc.originalGroundY * scaleY
+            }));
 
             const locations = resumeLocations.map(loc => ({
                 ...loc,
@@ -478,169 +600,192 @@
                 popupsContainer.appendChild(popup);
             });
 
-            const labelOffset = 20 * scaleY; // Distance above the building top
-
-            const signs = [
-                // Bottom layer workplaces
-                { x: 200 * scaleX, y: (850 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Intern at Cerno' }, // Top at 778 * scaleY
-                { x: 663 * scaleX, y: (850 * scaleY - 84 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Intern Accountant' }, // Top at 766 * scaleY
-                { x: 1126 * scaleX, y: (850 * scaleY - 96 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer RASHAYS' }, // Top at 754 * scaleY
-                // Middle layer workplaces
-                { x: 1126 * scaleX, y: (550 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer Consortio' }, // Top at 478 * scaleY
-                { x: 663 * scaleX, y: (550 * scaleY - 84 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Team Leader' }, // Top at 466 * scaleY
-                { x: 200 * scaleX, y: (550 * scaleY - 96 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Manager' }, // Top at 454 * scaleY
-                // Top layer workplace
-                { x: 795 * scaleX, y: (250 * scaleY - 120 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Data Manager' }, // Top at 130 * scaleY
-                // Icons
-                { x: 1650 * scaleX, y: (850 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Hobbies' }, // Top at 778 * scaleY
-                { x: 1650 * scaleX, y: (650 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Education' }, // Top at 578 * scaleY
-                { x: 1650 * scaleX, y: (450 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Skills' }, // Top at 378 * scaleY
-                { x: 1650 * scaleX, y: (250 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Projects' } // Top at 178 * scaleY
-            ];
-
-            const lane1Y = 990 * scaleY;
-            const lane2Y = 1020 * scaleY;
-
             const cars = [
-                { type: 'sports', x: 0, y: lane1Y, width: 40 * scaleX, height: 20 * scaleY, speed: 3.5 * scaleX, color: '#FF4040', lane: 1, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: 3.5 * scaleX },
-                { type: 'jeep', x: 200 * scaleX, y: lane2Y, width: 50 * scaleX, height: 30 * scaleY, speed: -2.8 * scaleX, color: '#32CD32', lane: 2, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: -2.8 * scaleX },
-                { type: 'suv', x: 400 * scaleX, y: lane1Y, width: 50 * scaleX, height: 25 * scaleY, speed: 2.2 * scaleX, color: '#FF69B4', lane: 1, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: 2.2 * scaleX },
-                { type: 'bus', x: 600 * scaleX, y: lane2Y, width: 70 * scaleX, height: 30 * scaleY, speed: -1.5 * scaleX, color: '#00CED1', lane: 2, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: -1.5 * scaleX },
-                { type: 'sports', x: 800 * scaleX, y: lane1Y, width: 40 * scaleX, height: 20 * scaleY, speed: 3.0 * scaleX, color: '#FFD700', lane: 1, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: 3.0 * scaleX },
-                { type: 'suv', x: 1000 * scaleX, y: lane2Y, width: 50 * scaleX, height: 25 * scaleY, speed: -2.0 * scaleX, color: '#A3BFFA', lane: 2, laneChangeTimer: Math.random() * 300 + 100, baseSpeed: -2.0 * scaleX }
-            ];
-
-            const trafficLights = [
-                { x: 400 * scaleX, y: 970 * scaleY, state: 'green', timer: Math.random() * 300, width: 30 * scaleX, height: 10 * scaleY },
-                { x: 800 * scaleX, y: 970 * scaleY, state: 'red', timer: Math.random() * 300, width: 30 * scaleX, height: 10 * scaleY },
-                { x: 1200 * scaleX, y: 970 * scaleY, state: 'yellow', timer: Math.random() * 300, width: 30 * scaleX, height: 10 * scaleY }
-            ];
-
-            const train = { x: 0, y: 350 * scaleY, width: 120 * scaleX, height: 25 * scaleY, speed: 2 * scaleX, color: '#A3BFFA' };
-            const stars = Array.from({ length: 100 }, () => ({
-                x: Math.random() * gameContainer.clientWidth,
-                y: Math.random() * gameContainer.clientHeight * 0.3,
-                radius: Math.random() * 2 * scaleX,
-                opacity: Math.random()
+                { originalX: 0, originalY: 980, originalWidth: 50, originalHeight: 20, originalSpeed: 2.5, color: '#FF4040' },
+                { originalX: 400, originalY: 980, originalWidth: 50, originalHeight: 20, originalSpeed: -2, color: '#32CD32' },
+                { originalX: 200, originalY: 960, originalWidth: 50, originalHeight: 20, originalSpeed: 2, color: '#FF69B4' },
+                { originalX: 600, originalY: 940, originalWidth: 50, originalHeight: 20, originalSpeed: -1.5, color: '#00CED1' }
+            ].map(car => ({
+                ...car,
+                x: car.originalX * scaleX,
+                y: car.originalY * scaleY,
+                width: car.originalWidth * scaleX,
+                height: car.originalHeight * scaleY,
+                speed: car.originalSpeed * scaleX
             }));
+
+            const train = { originalX: 0, originalY: 350, originalWidth: 120, originalHeight: 25, originalSpeed: 2, color: '#A3BFFA' };
+            train.x = train.originalX * scaleX;
+            train.y = train.originalY * scaleY;
+            train.width = train.originalWidth * scaleX;
+            train.height = train.originalHeight * scaleY;
+            train.speed = train.originalSpeed * scaleX;
+
+            const stars = Array.from({ length: 100 }, () => {
+                const x = Math.random();
+                const y = Math.random() * 0.3;
+                return {
+                    originalX: x,
+                    originalY: y,
+                    x: x * gameContainer.clientWidth,
+                    y: y * gameContainer.clientHeight,
+                    originalRadius: Math.random() * 2,
+                    radius: Math.random() * 2 * scaleX,
+                    opacity: Math.random()
+                };
+            });
+
             const distantBuildings = [
-                { x: 0, y: 800 * scaleY, width: 50 * scaleX, height: 70 * scaleY },
-                { x: 70 * scaleX, y: 800 * scaleY, width: 40 * scaleX, height: 80 * scaleY },
-                { x: 130 * scaleX, y: 800 * scaleY, width: 60 * scaleX, height: 60 * scaleY },
-                { x: 900 * scaleX, y: 800 * scaleY, width: 50 * scaleX, height: 70 * scaleY },
-                { x: 970 * scaleX, y: 800 * scaleY, width: 30 * scaleX, height: 90 * scaleY },
-                { x: 1020 * scaleX, y: 800 * scaleY, width: 40 * scaleX, height: 60 * scaleY }
-            ];
+                { originalX: 0, originalY: 800, originalWidth: 50, originalHeight: 70 },
+                { originalX: 70, originalY: 800, originalWidth: 40, originalHeight: 80 },
+                { originalX: 130, originalY: 800, originalWidth: 60, originalHeight: 60 },
+                { originalX: 900, originalY: 800, originalWidth: 50, originalHeight: 70 },
+                { originalX: 970, originalY: 800, originalWidth: 30, originalHeight: 90 },
+                { originalX: 1020, originalY: 800, originalWidth: 40, originalHeight: 60 }
+            ].map(db => ({
+                ...db,
+                x: db.originalX * scaleX,
+                y: db.originalY * scaleY,
+                width: db.originalWidth * scaleX,
+                height: db.originalHeight * scaleY
+            }));
+
             const undergroundTrains = [
-                { x: 0, y: 920 * scaleY, width: 100 * scaleX, height: 25 * scaleY, speed: 1.2 * scaleX, color: '#FF8C00' },
-                { x: 400 * scaleX, y: 950 * scaleY, width: 100 * scaleX, height: 25 * scaleY, speed: -1.0 * scaleX, color: '#FF4040' },
-                { x: 800 * scaleX, y: 980 * scaleY, width: 100 * scaleX, height: 25 * scaleY, speed: 0.8 * scaleX, color: '#32CD32' }
-            ];
+                { originalX: 0, originalY: 890, originalWidth: 100, originalHeight: 25, originalSpeed: 1.2 },
+                { originalX: 300, originalY: 920, originalWidth: 100, originalHeight: 25, originalSpeed: -1 },
+                { originalX: 600, originalY: 950, originalWidth: 100, originalHeight: 25, originalSpeed: 0.8 }
+            ].map(ut => ({
+                ...ut,
+                x: ut.originalX * scaleX,
+                y: ut.originalY * scaleY,
+                width: ut.originalWidth * scaleX,
+                height: ut.originalHeight * scaleY,
+                speed: ut.originalSpeed * scaleX
+            }));
+
             const undergroundSigns = [
-                { x: 150 * scaleX, y: 910 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Metro' },
-                { x: 400 * scaleX, y: 910 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Station' },
-                { x: 650 * scaleX, y: 910 * scaleY, width: 20 * scaleX, height: 10 * scaleY, label: 'Exit' }
-            ];
+                { originalX: 150, originalY: 880, originalWidth: 20, originalHeight: 10, label: 'Metro' },
+                { originalX: 400, originalY: 880, originalWidth: 20, originalHeight: 10, label: 'Station' },
+                { originalX: 650, originalY: 880, originalWidth: 20, originalHeight: 10, label: 'Exit' }
+            ].map(us => ({
+                ...us,
+                x: us.originalX * scaleX,
+                y: us.originalY * scaleY,
+                width: us.originalWidth * scaleX,
+                height: us.originalHeight * scaleY
+            }));
+
+            const neonArrows = [
+                { originalX: 50, originalY: 800, originalWidth: 60, originalHeight: 30 },
+                { originalX: 50, originalY: 500, originalWidth: 60, originalHeight: 30 },
+                { originalX: 50, originalY: 200, originalWidth: 60, originalHeight: 30 }
+            ].map(na => ({
+                ...na,
+                x: na.originalX * scaleX,
+                y: na.originalY * scaleY,
+                width: na.originalWidth * scaleX,
+                height: na.originalHeight * scaleY
+            }));
 
             function drawBuilding(x, y, width, height, tooltip, groundY, isPresent, loc) {
-                try {
-                    const baseY = groundY - height;
-                    ctx.save();
-                    const gradient = ctx.createLinearGradient(x, baseY, x, baseY + height);
-                    gradient.addColorStop(0, '#2A2A3A');
-                    gradient.addColorStop(1, '#3A3A4A');
-                    ctx.fillStyle = gradient;
-                    ctx.strokeStyle = '#00DDEB';
-                    ctx.lineWidth = 0.5 * scaleX;
+                const baseY = groundY - height;
+                ctx.save();
+                const gradient = ctx.createLinearGradient(x + offsetX, baseY + offsetY, x + offsetX, baseY + height + offsetY);
+                gradient.addColorStop(0, '#2A2A3A');
+                gradient.addColorStop(1, '#3A3A4A');
+                ctx.fillStyle = gradient;
+                ctx.strokeStyle = '#00DDEB';
+                ctx.lineWidth = 0.5 * scaleX;
 
+                try {
                     ctx.beginPath();
                     if (loc.id === 'intern-cerno') {
-                        ctx.moveTo(x, baseY);
-                        ctx.lineTo(x + width, baseY);
-                        ctx.lineTo(x + width, baseY + height);
-                        ctx.lineTo(x, baseY + height);
+                        ctx.moveTo(x + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + offsetX, baseY + height + offsetY);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                         ctx.fillStyle = '#00DDEB';
-                        ctx.fillRect(x + width / 2 - 2 * scaleX, baseY - 10 * scaleY, 4 * scaleX, 10 * scaleY);
+                        ctx.fillRect(x + offsetX + width / 2 - 2 * scaleX, baseY + offsetY - 10 * scaleY, 4 * scaleX, 10 * scaleY);
                     } else if (loc.id === 'intern-accountant') {
-                        ctx.moveTo(x, baseY);
-                        ctx.lineTo(x + width, baseY + 10 * scaleY);
-                        ctx.lineTo(x + width, baseY + height);
-                        ctx.lineTo(x, baseY + height);
+                        ctx.moveTo(x + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + 10 * scaleY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + offsetX, baseY + height + offsetY);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                     } else if (loc.id === 'payroll-officer-rashays') {
-                        ctx.moveTo(x, baseY + 20 * scaleY);
-                        ctx.lineTo(x, baseY + height);
-                        ctx.lineTo(x + width, baseY + height);
-                        ctx.lineTo(x + width, baseY + 20 * scaleY);
-                        ctx.quadraticCurveTo(x + width / 2, baseY, x, baseY + 20 * scaleY);
+                        ctx.moveTo(x + offsetX, baseY + 20 * scaleY + offsetY);
+                        ctx.lineTo(x + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + 20 * scaleY + offsetY);
+                        ctx.quadraticCurveTo(x + width / 2 + offsetX, baseY + offsetY, x + offsetX, baseY + 20 * scaleY + offsetY);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                     } else if (loc.id === 'payroll-officer-consortio') {
-                        ctx.moveTo(x, baseY);
-                        ctx.lineTo(x + width, baseY);
-                        ctx.lineTo(x + width, baseY + height);
-                        ctx.lineTo(x, baseY + height);
+                        ctx.moveTo(x + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + offsetX, baseY + height + offsetY);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                         ctx.fillStyle = '#00DDEB';
-                        ctx.fillRect(x + width / 2 - 5 * scaleX, baseY - 5 * scaleY, 10 * scaleX, (Math.random() * (10 - 5) + 5) * scaleY);
+                        ctx.fillRect(x + offsetX + width / 2 - 5 * scaleX, baseY + offsetY - 5 * scaleY, 10 * scaleX, (Math.random() * (10 - 5) + 5) * scaleY);
                     } else if (loc.id === 'payroll-team-leader') {
-                        ctx.moveTo(x, baseY + 5 * scaleY);
-                        ctx.lineTo(x + width / 2, baseY);
-                        ctx.lineTo(x + width, baseY + 5 * scaleY);
-                        ctx.lineTo(x + width, baseY + height);
-                        ctx.lineTo(x, baseY + height);
+                        ctx.moveTo(x + offsetX, baseY + 5 * scaleY + offsetY);
+                        ctx.lineTo(x + width / 2 + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + 5 * scaleY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + offsetX, baseY + height + offsetY);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                     } else if (loc.id === 'payroll-manager') {
-                        ctx.moveTo(x + 5 * scaleX, baseY);
-                        ctx.lineTo(x + width - 5 * scaleX, baseY);
-                        ctx.lineTo(x + width, baseY + height);
-                        ctx.lineTo(x, baseY + height);
+                        ctx.moveTo(x + 5 * scaleX + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width - 5 * scaleX + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + offsetX, baseY + height + offsetY);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                     } else if (loc.id === 'data-manager') {
-                        ctx.moveTo(x, baseY + 20 * scaleY);
-                        ctx.lineTo(x, baseY + height);
-                        ctx.lineTo(x + width, baseY + height);
-                        ctx.lineTo(x + width, baseY + 20 * scaleY);
-                        ctx.quadraticCurveTo(x + width / 2, baseY - 10 * scaleY, x, baseY + 20 * scaleY);
+                        ctx.moveTo(x + offsetX, baseY + 20 * scaleY + offsetY);
+                        ctx.lineTo(x + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + 20 * scaleY + offsetY);
+                        ctx.quadraticCurveTo(x + width / 2 + offsetX, baseY - 10 * scaleY + offsetY, x + offsetX, baseY + 20 * scaleY + offsetY);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                     } else {
-                        ctx.moveTo(x, baseY);
-                        ctx.lineTo(x + width, baseY);
-                        ctx.lineTo(x + width, baseY + height);
-                        ctx.lineTo(x, baseY + height);
+                        ctx.moveTo(x + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + offsetY);
+                        ctx.lineTo(x + width + offsetX, baseY + height + offsetY);
+                        ctx.lineTo(x + offsetX, baseY + height + offsetY);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                         ctx.fillStyle = '#00DDEB';
-                        ctx.fillRect(x + width / 2 - 3 * scaleX, baseY - 5 * scaleY, 6 * scaleX, 5 * scaleY);
+                        ctx.fillRect(x + offsetX + width / 2 - 3 * scaleX, baseY + offsetY - 5 * scaleY, 6 * scaleX, 5 * scaleY);
                     }
 
                     const rows = height >= 80 * scaleY ? 8 : 6;
                     const cols = 4;
                     const windowWidth = 8 * scaleX * (window.innerWidth <= 767 ? 1.3 : 1);
                     const windowHeight = 6 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1);
-                    let offsetY = height >= 80 * scaleY ? 20 * scaleY : 16 * scaleY;
-                    if (loc.id === 'intern-cerno') offsetY = 18 * scaleY;
-                    if (loc.id === 'payroll-officer-consortio') offsetY = 14 * scaleY;
-                    if (loc.id === 'payroll-officer-rashays') offsetY = 24 * scaleY;
-                    const offsetX = (width - cols * windowWidth - (cols - 1) * 2 * scaleX) / 2;
+                    let offsetYLocal = height >= 80 * scaleY ? 20 * scaleY : 16 * scaleY;
+                    if (loc.id === 'intern-cerno') offsetYLocal = 18 * scaleY;
+                    if (loc.id === 'payroll-officer-consortio') offsetYLocal = 14 * scaleY;
+                    if (loc.id === 'payroll-officer-rashays') offsetYLocal = 24 * scaleY;
+                    const offsetXLocal = (width - cols * windowWidth - (cols - 1) * 2 * scaleX) / 2;
                     for (let i = 0; i < rows; i++) {
                         for (let j = 0; j < cols; j++) {
-                            let yPos = baseY + offsetY + i * (windowHeight + 2 * scaleY);
+                            let yPos = baseY + offsetY + offsetYLocal + i * (windowHeight + 2 * scaleY);
                             if (loc.id === 'intern-accountant') {
                                 yPos += ((cols - 1 - j) / (cols - 1)) * 10 * scaleY;
                             } else if (loc.id === 'payroll-officer-rashays' && i === 0) {
@@ -649,10 +794,10 @@
                                 const taperOffset = (cols - 1 - j) < cols / 2 ? (cols - 1 - j) : j;
                                 yPos += (taperOffset * 2 * scaleY);
                             }
-                            if (yPos + windowHeight <= groundY) {
+                            if (yPos + windowHeight <= groundY + offsetY) {
                                 ctx.fillStyle = '#00DDEB';
                                 ctx.fillRect(
-                                    x + offsetX + j * (windowWidth + 2 * scaleX),
+                                    x + offsetX + offsetXLocal + j * (windowWidth + 2 * scaleX),
                                     yPos,
                                     windowWidth,
                                     windowHeight
@@ -660,7 +805,7 @@
                                 ctx.strokeStyle = '#FFFFFF';
                                 ctx.lineWidth = 0.5 * scaleX;
                                 ctx.strokeRect(
-                                    x + offsetX + j * (windowWidth + 2 * scaleX),
+                                    x + offsetX + offsetXLocal + j * (windowWidth + 2 * scaleX),
                                     yPos,
                                     windowWidth,
                                     windowHeight
@@ -670,44 +815,46 @@
                     }
 
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                    ctx.fillRect(x + 5 * scaleX, groundY, width, 5 * scaleY);
+                    ctx.fillRect(x + offsetX + 5 * scaleX, groundY + offsetY, width, 5 * scaleY);
 
                     if (isPresent) {
                         ctx.strokeStyle = '#00DDEB';
                         ctx.globalAlpha = pulseOpacity;
                         ctx.lineWidth = 4 * scaleX;
-                        ctx.strokeRect(x - 2 * scaleX, baseY - 2 * scaleY, width + 4 * scaleX, height + 4 * scaleY);
+                        ctx.strokeRect(x + offsetX - 2 * scaleX, baseY + offsetY - 2 * scaleY, width + 4 * scaleX, height + 4 * scaleY);
                         ctx.globalAlpha = 1;
                     }
                     if (loc.pulseVisited && !isPresent) {
                         ctx.strokeStyle = '#00DDEB';
                         ctx.globalAlpha = pulseOpacity;
                         ctx.lineWidth = 2 * scaleX;
-                        ctx.strokeRect(x - 1 * scaleX, baseY - 1 * scaleY, width + 2 * scaleX, height + 2 * scaleY);
+                        ctx.strokeRect(x + offsetX - 1 * scaleX, baseY + offsetY - 1 * scaleY, width + 2 * scaleX, height + 2 * scaleY);
                         ctx.globalAlpha = 1;
                     }
-                    ctx.restore();
                 } catch (error) {
                     console.error(`Error drawing building ${loc.id}:`, error);
+                    ctx.fillRect(x + offsetX, baseY + offsetY, width, height);
+                    ctx.strokeRect(x + offsetX, baseY + offsetY, width, height);
                 }
+                ctx.restore();
             }
 
             function drawIcon(x, y, width, height, tooltip, groundY, isPresent, loc) {
-                try {
-                    const baseY = groundY - height;
-                    ctx.save();
-                    const gradient = ctx.createLinearGradient(x, baseY, x, baseY + height);
-                    gradient.addColorStop(0, '#00DDEB');
-                    gradient.addColorStop(1, '#00A3B0');
-                    ctx.fillStyle = gradient;
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 2 * scaleX;
+                const baseY = groundY - height;
+                ctx.save();
+                const gradient = ctx.createLinearGradient(x + offsetX, baseY + offsetY, x + offsetX, baseY + height + offsetY);
+                gradient.addColorStop(0, '#00DDEB');
+                gradient.addColorStop(1, '#00A3B0');
+                ctx.fillStyle = gradient;
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 2 * scaleX;
 
+                try {
                     ctx.beginPath();
                     if (loc.id === 'hobbies') {
                         const heartSize = width * 0.8;
-                        const cx = x + width / 2;
-                        const cy = baseY + height / 2;
+                        const cx = x + offsetX + width / 2;
+                        const cy = baseY + offsetY + height / 2;
                         ctx.moveTo(cx, cy - heartSize / 4);
                         ctx.bezierCurveTo(
                             cx + heartSize / 2, cy - heartSize / 2,
@@ -728,24 +875,24 @@
                         ctx.fill();
                         ctx.globalAlpha = 1;
                     } else if (loc.id === 'education') {
-                        ctx.moveTo(x + width * 0.2, baseY);
-                        ctx.lineTo(x + width * 0.8, baseY);
-                        ctx.lineTo(x + width * 0.8, baseY + height * 0.7);
-                        ctx.quadraticCurveTo(x + width / 2, baseY + height, x + width * 0.2, baseY + height * 0.7);
+                        ctx.moveTo(x + offsetX + width * 0.2, baseY + offsetY);
+                        ctx.lineTo(x + offsetX + width * 0.8, baseY + offsetY);
+                        ctx.lineTo(x + offsetX + width * 0.8, baseY + height * 0.7 + offsetY);
+                        ctx.quadraticCurveTo(x + offsetX + width / 2, baseY + height + offsetY, x + offsetX + width * 0.2, baseY + height * 0.7 + offsetY);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                         ctx.strokeStyle = '#FFFFFF';
                         ctx.lineWidth = 1 * scaleX;
                         ctx.beginPath();
-                        ctx.moveTo(x + width * 0.3, baseY + height * 0.4);
-                        ctx.lineTo(x + width * 0.7, baseY + height * 0.4);
-                        ctx.moveTo(x + width * 0.3, baseY + height * 0.5);
-                        ctx.lineTo(x + width * 0.7, baseY + height * 0.5);
+                        ctx.moveTo(x + offsetX + width * 0.3, baseY + offsetY + height * 0.4);
+                        ctx.lineTo(x + offsetX + width * 0.7, baseY + offsetY + height * 0.4);
+                        ctx.moveTo(x + offsetX + width * 0.3, baseY + offsetY + height * 0.5);
+                        ctx.lineTo(x + offsetX + width * 0.7, baseY + offsetY + height * 0.5);
                         ctx.stroke();
                     } else if (loc.id === 'skills') {
-                        const cx = x + width / 2;
-                        const cy = baseY + height / 2;
+                        const cx = x + offsetX + width / 2;
+                        const cy = baseY + offsetY + height / 2;
                         const r = width * 0.4;
                         for (let i = 0; i < 8; i++) {
                             const angle = (i * Math.PI) / 4;
@@ -762,8 +909,8 @@
                         ctx.arc(cx, cy, 5 * scaleX, 0, Math.PI * 2);
                         ctx.fill();
                     } else if (loc.id === 'projects') {
-                        const cx = x + width / 2;
-                        const cy = baseY + height * 0.7;
+                        const cx = x + offsetX + width / 2;
+                        const cy = baseY + offsetY + height * 0.7;
                         ctx.arc(cx, cy, width * 0.3, 0, Math.PI * 2);
                         ctx.moveTo(cx - width * 0.1, cy + width * 0.3);
                         ctx.lineTo(cx - width * 0.1, cy + width * 0.5);
@@ -783,206 +930,106 @@
                         ctx.globalAlpha = 1;
                     }
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                    ctx.fillRect(x + 5 * scaleX, groundY, width, 5 * scaleY);
+                    ctx.fillRect(x + offsetX + 5 * scaleX, groundY + offsetY, width, 5 * scaleY);
 
-                    ctx.shadowColor = '#00DDEB';
-                    ctx.shadowBlur = 15 * scaleX;
                     ctx.strokeStyle = '#00DDEB';
                     ctx.globalAlpha = pulseOpacity;
                     ctx.lineWidth = 3 * scaleX;
-                    ctx.strokeRect(x - 2 * scaleX, baseY - 2 * scaleY, width + 4 * scaleX, height + 4 * scaleY);
+                    ctx.strokeRect(x + offsetX - 2 * scaleX, baseY + offsetY - 2 * scaleY, width + 4 * scaleX, height + 4 * scaleY);
                     ctx.globalAlpha = 1;
-                    ctx.shadowBlur = 0;
 
                     if (isPresent) {
                         ctx.strokeStyle = '#00DDEB';
                         ctx.globalAlpha = pulseOpacity;
                         ctx.lineWidth = 4 * scaleX;
-                        ctx.strokeRect(x - 2 * scaleX, baseY - 2 * scaleY, width + 4 * scaleX, height + 4 * scaleY);
+                        ctx.strokeRect(x + offsetX - 2 * scaleX, baseY + offsetY - 2 * scaleY, width + 4 * scaleX, height + 4 * scaleY);
                         ctx.globalAlpha = 1;
                     }
                     if (loc.pulseVisited && !isPresent) {
                         ctx.strokeStyle = '#00DDEB';
                         ctx.globalAlpha = pulseOpacity;
                         ctx.lineWidth = 2 * scaleX;
-                        ctx.strokeRect(x - 1 * scaleX, baseY - 1 * scaleY, width + 2 * scaleX, height + 2 * scaleY);
+                        ctx.strokeRect(x + offsetX - 1 * scaleX, baseY + offsetY - 1 * scaleY, width + 2 * scaleX, height + 2 * scaleY);
                         ctx.globalAlpha = 1;
                     }
-                    ctx.restore();
                 } catch (error) {
                     console.error(`Error drawing icon ${loc.id}:`, error);
+                    ctx.fillRect(x + offsetX, baseY + offsetY, width, height);
+                    ctx.strokeRect(x + offsetX, baseY + offsetY, width, height);
                 }
+                ctx.restore();
             }
 
             function drawCar(car) {
-                try {
-                    ctx.save();
-                    ctx.fillStyle = car.color;
-                    const x = car.x;
-                    const y = car.y;
-                    const w = car.width;
-                    const h = car.height;
-
-                    if (car.type === 'sports') {
-                        ctx.beginPath();
-                        ctx.moveTo(x + w * 0.3, y);
-                        ctx.lineTo(x + w, y + h * 0.4);
-                        ctx.lineTo(x + w, y + h * 0.6);
-                        ctx.lineTo(x + w * 0.3, y + h);
-                        ctx.lineTo(x, y + h * 0.6);
-                        ctx.lineTo(x, y + h * 0.4);
-                        ctx.closePath();
-                        ctx.fill();
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.fillRect(x + w * 0.3, y + h * 0.3, w * 0.4, h * 0.4);
-                    } else if (car.type === 'jeep') {
-                        ctx.fillRect(x, y, w, h);
-                        ctx.fillStyle = '#666666';
-                        ctx.fillRect(x + w * 0.1, y - h * 0.1, w * 0.8, h * 0.1);
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.fillRect(x + w * 0.2, y + h * 0.2, w * 0.3, h * 0.3);
-                        ctx.fillRect(x + w * 0.55, y + h * 0.2, w * 0.3, h * 0.3);
-                    } else if (car.type === 'suv') {
-                        ctx.beginPath();
-                        ctx.moveTo(x + w * 0.1, y);
-                        ctx.lineTo(x + w * 0.9, y);
-                        ctx.quadraticCurveTo(x + w, y + h * 0.2, x + w, y + h * 0.4);
-                        ctx.lineTo(x + w, y + h * 0.6);
-                        ctx.quadraticCurveTo(x + w, y + h * 0.8, x + w * 0.9, y + h);
-                        ctx.lineTo(x + w * 0.1, y + h);
-                        ctx.quadraticCurveTo(x, y + h * 0.8, x, y + h * 0.6);
-                        ctx.lineTo(x, y + h * 0.4);
-                        ctx.quadraticCurveTo(x, y + h * 0.2, x + w * 0.1, y);
-                        ctx.closePath();
-                        ctx.fill();
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.fillRect(x + w * 0.2, y + h * 0.2, w * 0.3, h * 0.3);
-                        ctx.fillRect(x + w * 0.55, y + h * 0.2, w * 0.3, h * 0.3);
-                    } else if (car.type === 'bus') {
-                        ctx.fillRect(x, y, w, h);
-                        ctx.fillStyle = '#FFFFFF';
-                        for (let i = 0; i < 4; i++) {
-                            ctx.fillRect(x + w * 0.15 + i * w * 0.2, y + h * 0.2, w * 0.1, h * 0.3);
-                        }
-                    }
-                    ctx.restore();
-                } catch (error) {
-                    console.error('Error drawing car:', error);
-                }
-            }
-
-            function drawTrafficLight(light) {
-                try {
-                    ctx.save();
-                    const x = light.x;
-                    const y = light.y;
-                    const w = light.width;
-                    const h = light.height;
-
-                    ctx.fillStyle = '#333333';
-                    ctx.fillRect(x, y, w, h);
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 1 * scaleX;
-                    ctx.strokeRect(x, y, w, h);
-
-                    const lightSize = h * 0.6;
-                    const spacing = (w - 3 * lightSize) / 4;
-                    const redX = x + spacing;
-                    const yellowX = x + spacing * 2 + lightSize;
-                    const greenX = x + spacing * 3 + lightSize * 2;
-                    const lightY = y + h / 2 - lightSize / 2;
-
-                    ctx.beginPath();
-                    ctx.arc(redX + lightSize / 2, lightY + lightSize / 2, lightSize / 2, 0, Math.PI * 2);
-                    ctx.fillStyle = light.state === 'red' ? '#FF0000' : '#660000';
-                    ctx.fill();
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.arc(yellowX + lightSize / 2, lightY + lightSize / 2, lightSize / 2, 0, Math.PI * 2);
-                    ctx.fillStyle = light.state === 'yellow' ? '#FFFF00' : '#666600';
-                    ctx.fill();
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.arc(greenX + lightSize / 2, lightY + lightSize / 2, lightSize / 2, 0, Math.PI * 2);
-                    ctx.fillStyle = light.state === 'green' ? '#00FF00' : '#006600';
-                    ctx.fill();
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.stroke();
-
-                    ctx.restore();
-                } catch (error) {
-                    console.error('Error drawing traffic light:', error);
-                }
+                ctx.save();
+                ctx.fillStyle = car.color;
+                ctx.fillRect(car.x + offsetX, car.y + offsetY, car.width, car.height);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(car.x + offsetX + 6 * scaleX, car.y + offsetY + 3 * scaleY, 10 * scaleX, 6 * scaleY);
+                ctx.fillRect(car.x + offsetX + 34 * scaleX, car.y + offsetY + 3 * scaleY, 10 * scaleX, 6 * scaleY);
+                ctx.restore();
             }
 
             function drawTrain(train) {
-                try {
-                    ctx.save();
-                    ctx.fillStyle = train.color;
-                    ctx.fillRect(train.x, train.y, train.width, train.height);
-                    ctx.fillStyle = '#FFFFFF';
-                    for (let i = 0; i < 3; i++) {
-                        ctx.fillRect(train.x + 12 * scaleX + i * 36 * scaleX, train.y + 3 * scaleY, 12 * scaleX, 12 * scaleY);
-                    }
-                    ctx.restore();
-                } catch (error) {
-                    console.error('Error drawing train:', error);
+                ctx.save();
+                ctx.fillStyle = train.color;
+                ctx.fillRect(train.x + offsetX, train.y + offsetY, train.width, train.height);
+                ctx.fillStyle = '#FFFFFF';
+                for (let i = 0; i < 3; i++) {
+                    ctx.fillRect(train.x + offsetX + 12 * scaleX + i * 36 * scaleX, train.y + offsetY + 3 * scaleY, 12 * scaleX, 12 * scaleY);
                 }
+                ctx.restore();
             }
 
             function drawUndergroundTrain(train) {
-                try {
-                    ctx.save();
-                    ctx.fillStyle = train.color;
-                    ctx.fillRect(train.x, train.y, train.width, train.height);
-                    ctx.fillStyle = '#FFFFE0';
-                    for (let i = 0; i < 2; i++) {
-                        ctx.fillRect(train.x + 12 * scaleX + i * 36 * scaleX, train.y + 3 * scaleY, 12 * scaleX, 12 * scaleY);
-                    }
-                    ctx.restore();
-                } catch (error) {
-                    console.error('Error drawing underground train:', error);
+                ctx.save();
+                ctx.fillStyle = '#FF8C00';
+                ctx.fillRect(train.x + offsetX, train.y + offsetY, train.width, train.height);
+                ctx.fillStyle = '#FFFFE0';
+                for (let i = 0; i < 2; i++) {
+                    ctx.fillRect(train.x + offsetX + 12 * scaleX + i * 36 * scaleX, train.y + offsetY + 3 * scaleY, 12 * scaleX, 12 * scaleY);
                 }
+                ctx.restore();
             }
 
             function drawSign(sign) {
-                try {
-                    console.log('Drawing sign:', sign.label, 'at x:', sign.x, 'y:', sign.y);
-                    ctx.save();
-                    ctx.font = `${14 * scaleX}px 'Inter', sans-serif`;
-                    const textMetrics = ctx.measureText(sign.label);
-                    const textWidth = textMetrics.width;
-                    const textHeight = 14 * scaleY;
-                    ctx.fillStyle = 'rgba(20, 20, 30, 0.8)';
-                    ctx.fillRect(
-                        sign.x,
-                        sign.y - textHeight,
-                        textWidth + 4 * scaleX,
-                        textHeight + 2 * scaleY
-                    );
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.globalAlpha = Math.sin(Date.now() / 500) * 0.3 + 0.7;
-                    ctx.fillText(sign.label, sign.x + 2 * scaleX, sign.y + 1 * scaleY);
-                    ctx.globalAlpha = 1;
-                    ctx.restore();
-                } catch (error) {
-                    console.error('Error drawing sign:', error);
-                }
+                ctx.save();
+                ctx.font = `${14 * scaleX}px Inter`;
+                ctx.fillStyle = '#FFFFFF';
+                ctx.globalAlpha = Math.sin(Date.now() / 500) * 0.3 + 0.7;
+                ctx.fillText(sign.label, sign.x + offsetX + 2 * scaleX, sign.y + offsetY + 1 * scaleY);
+                ctx.globalAlpha = 1;
+                ctx.restore();
             }
 
             function drawDistantBuilding(building) {
-                try {
-                    ctx.save();
-                    ctx.fillStyle = '#1E3A5F';
-                    ctx.fillRect(building.x, building.y - building.height, building.width, building.height);
-                    ctx.restore();
-                } catch (error) {
-                    console.error('Error drawing distant building:', error);
-                }
+                ctx.save();
+                ctx.fillStyle = '#1E3A5F';
+                ctx.fillRect(building.x + offsetX, building.y + offsetY - building.height, building.width, building.height);
+                ctx.restore();
+            }
+
+            function drawNeonArrow(arrow) {
+                ctx.save();
+                ctx.fillStyle = '#00DDEB';
+                ctx.globalAlpha = pulseOpacity;
+                ctx.beginPath();
+                const cx = arrow.x + offsetX + arrow.width / 2;
+                const cy = arrow.y + offsetY + arrow.height / 2;
+                ctx.moveTo(arrow.x + offsetX, cy);
+                ctx.lineTo(arrow.x + offsetX + arrow.width - 10 * scaleX, cy);
+                ctx.lineTo(arrow.x + offsetX + arrow.width - 10 * scaleX, cy - 10 * scaleY);
+                ctx.lineTo(arrow.x + offsetX + arrow.width, cy);
+                ctx.lineTo(arrow.x + offsetX + arrow.width - 10 * scaleX, cy + 10 * scaleY);
+                ctx.lineTo(arrow.x + offsetX + arrow.width - 10 * scaleX, cy);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 1 * scaleX;
+                ctx.globalAlpha = pulseOpacity * 0.7;
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                ctx.restore();
             }
 
             let xp = 0;
@@ -1034,14 +1081,6 @@
                 checkInteraction();
             });
 
-            function checkInteraction() {
-                if (nearestLoc && minDistance < 60 * scaleX) {
-                    closeAllPopups();
-                    document.getElementById(nearestLoc.id + '-popup').classList.add('active');
-                    document.getElementById('game-canvas').classList.add('blur');
-                }
-            }
-
             function update() {
                 try {
                     console.log('Update loop running');
@@ -1092,97 +1131,24 @@
                         }
                     });
 
-                    player.x = Math.max(0, Math.min(gameContainer.clientWidth - player.width, player.x));
+                    player.x = Math.max(0, Math.min(designWidth * scaleX - player.width, player.x));
                     player.y = Math.min(850 * scaleY - player.height, player.y);
 
                     pulseOpacity += pulseDirection * 0.02;
                     if (pulseOpacity >= 0.8 || pulseOpacity <= 0.4) pulseDirection *= -1;
 
-                    trafficLights.forEach(light => {
-                        light.timer -= 1;
-                        if (light.timer <= 0) {
-                            if (light.state === 'green') {
-                                light.state = 'yellow';
-                                light.timer = 120;
-                            } else if (light.state === 'yellow') {
-                                light.state = 'red';
-                                light.timer = 300;
-                            } else if (light.state === 'red') {
-                                light.state = 'green';
-                                light.timer = 300;
-                            }
-                        }
-                    });
-
-                    const minDistanceBetweenCars = 1.5;
                     cars.forEach(car => {
-                        let shouldStop = false;
-                        trafficLights.forEach(light => {
-                            const distance = car.speed > 0 ? light.x - (car.x + car.width) : car.x - light.x;
-                            if (distance > 0 && distance < 50 * scaleX && (light.state === 'red' || light.state === 'yellow')) {
-                                shouldStop = true;
-                            }
-                        });
-
-                        if (shouldStop) {
-                            car.speed = 0;
-                        } else {
-                            car.speed = car.baseSpeed;
-                        }
-
-                        cars.forEach(otherCar => {
-                            if (car === otherCar || car.lane !== otherCar.lane) return;
-                            const dx = car.x - otherCar.x;
-                            const minDx = (car.width + otherCar.width) * minDistanceBetweenCars / 2;
-                            if (Math.abs(dx) < minDx && dx !== 0) {
-                                if (dx > 0) {
-                                    if (car.speed > otherCar.speed) {
-                                        car.speed = Math.max(car.speed * 0.8, otherCar.speed);
-                                    }
-                                } else {
-                                    if (car.speed < otherCar.speed) {
-                                        car.speed = Math.min(car.speed * 1.2, car.baseSpeed);
-                                    }
-                                }
-                            }
-                        });
-
                         car.x += car.speed;
-                        if (car.x > gameContainer.clientWidth) car.x = -car.width;
-                        if (car.x + car.width < 0) car.x = gameContainer.clientWidth;
-
-                        car.laneChangeTimer -= 1;
-                        if (car.laneChangeTimer <= 0) {
-                            const shouldChangeLane = Math.random() < 0.3;
-                            if (shouldChangeLane) {
-                                let canChange = true;
-                                const targetLane = car.lane === 1 ? 2 : 1;
-                                cars.forEach(otherCar => {
-                                    if (otherCar.lane !== targetLane) return;
-                                    const dx = Math.abs(otherCar.x - car.x);
-                                    if (dx < car.width * 2) canChange = false;
-                                });
-                                cars.forEach(otherCar => {
-                                    if (otherCar === car || otherCar.lane !== car.lane) return;
-                                    const dx = Math.abs(otherCar.x - car.x);
-                                    if (dx < car.width * 1.5) canChange = false;
-                                });
-                                if (canChange) {
-                                    car.lane = targetLane;
-                                    car.y = targetLane === 1 ? lane1Y : lane2Y;
-                                }
-                            }
-                            car.laneChangeTimer = Math.random() * 300 + 100;
-                        }
+                        if (car.x > designWidth * scaleX) car.x = -car.width;
+                        if (car.x + car.width < 0) car.x = designWidth * scaleX;
                     });
-
                     train.x += train.speed;
-                    if (train.x > gameContainer.clientWidth) train.x = -train.width;
-                    if (train.x + train.width < 0) train.x = gameContainer.clientWidth;
+                    if (train.x > designWidth * scaleX) train.x = -train.width;
+                    if (train.x + train.width < 0) train.x = designWidth * scaleX;
                     undergroundTrains.forEach(train => {
                         train.x += train.speed;
-                        if (train.x > gameContainer.clientWidth) train.x = -train.width;
-                        if (train.x + train.width < 0) train.x = gameContainer.clientWidth;
+                        if (train.x > designWidth * scaleX) train.x = -train.width;
+                        if (train.x + train.width < 0) train.x = designWidth * scaleX;
                     });
                     stars.forEach(star => {
                         star.opacity = (star.opacity + 0.01) % 1;
@@ -1193,12 +1159,12 @@
 
                     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-                    const gradient = ctx.createLinearGradient(0, 0, 0, gameContainer.clientHeight);
+                    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height / dpr);
                     gradient.addColorStop(0, '#14141E');
                     gradient.addColorStop(0.8, '#1E3A5F');
                     gradient.addColorStop(1, '#3A3A4A');
                     ctx.fillStyle = gradient;
-                    ctx.fillRect(0, 0, gameContainer.clientWidth, gameContainer.clientHeight);
+                    ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
                     stars.forEach(star => {
                         ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
@@ -1210,53 +1176,24 @@
                     distantBuildings.forEach(drawDistantBuilding);
 
                     ctx.fillStyle = '#3A3A4A';
-                    ctx.fillRect(0, 340 * scaleY, gameContainer.clientWidth, 6 * scaleY);
+                    ctx.fillRect(offsetX, 340 * scaleY + offsetY, designWidth * scaleX, 6 * scaleY);
                     ctx.fillStyle = '#00DDEB';
-                    ctx.fillRect(0, 346 * scaleY, gameContainer.clientWidth, 6 * scaleY);
+                    ctx.fillRect(offsetX, 346 * scaleY + offsetY, designWidth * scaleX, 6 * scaleY);
+
+                    neonArrows.forEach(drawNeonArrow);
 
                     drawTrain(train);
 
                     ctx.fillStyle = '#3A3A4A';
                     platforms.forEach(platform => {
-                        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                        ctx.fillRect(platform.x + offsetX, platform.y + offsetY, platform.width, platform.height);
                         ctx.strokeStyle = '#00DDEB';
                         ctx.lineWidth = 2 * scaleX;
                         ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 800) * 0.3;
-                        ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+                        ctx.strokeRect(platform.x + offsetX, platform.y + offsetY, platform.width, platform.height);
                         ctx.globalAlpha = 1;
                     });
 
-                    ctx.fillStyle = 'rgba(60, 60, 80, 0.6)';
-                    ctx.fillRect(0, 920 * scaleY, gameContainer.clientWidth, 60 * scaleY);
-                    ctx.fillStyle = '#3A3A4A';
-                    ctx.fillRect(0, 920 * scaleY, gameContainer.clientWidth, 60 * scaleY);
-                    for (let y = 920 * scaleY; y <= 980 * scaleY; y += 30 * scaleY) {
-                        ctx.fillStyle = '#2A2A3A';
-                        ctx.fillRect(0, y - 6 * scaleY, gameContainer.clientWidth, 3 * scaleY);
-                        ctx.fillStyle = '#FFC107';
-                        ctx.fillRect(0, y - 3 * scaleY, gameContainer.clientWidth, 3 * scaleY);
-                    }
-                    undergroundTrains.forEach(drawUndergroundTrain);
-                    undergroundSigns.forEach(drawSign);
-                    for (let x = 60 * scaleX; x < gameContainer.clientWidth; x += 120 * scaleX) {
-                        ctx.fillStyle = '#FFFFE0';
-                        ctx.beginPath();
-                        ctx.arc(x, 910 * scaleY, 6 * scaleX, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-
-                    ctx.fillStyle = '#555555';
-                    ctx.fillRect(0, 980 * scaleY, gameContainer.clientWidth, 70 * scaleY);
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 2 * scaleX;
-                    ctx.setLineDash([10 * scaleX, 10 * scaleX]);
-                    ctx.beginPath();
-                    ctx.moveTo(0, 1005 * scaleY);
-                    ctx.lineTo(gameContainer.clientWidth, 1005 * scaleY);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-
-                    trafficLights.forEach(drawTrafficLight);
                     cars.forEach(drawCar);
 
                     nearestLoc = null;
@@ -1283,41 +1220,111 @@
                                 achievementsUnlocked = true;
                                 locations.find(l => l.id === 'achievements').locked = false;
                                 document.getElementById('achievements-popup').classList.add('active');
-                                document.getElementById('game-canvas').classList.add('blur');
                             }
+                        }
+                        if (visited.has(loc.id) && !loc.pulseVisited) {
+                            loc.pulseVisited = true;
                         }
                     });
 
-                    if (playerImage.complete && playerImage.naturalWidth !== 0) {
-                        ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
-                    } else {
-                        ctx.fillStyle = '#FF4040';
-                        ctx.fillRect(player.x, player.y, player.width, player.height);
+                    signs.forEach(drawSign);
+
+                    ctx.font = `${20 * scaleX}px Inter`;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText('2013–2017', 20 * scaleX + offsetX, 820 * scaleY + offsetY);
+                    ctx.fillText('Early Career', 20 * scaleX + offsetX, 840 * scaleY + offsetY);
+                    ctx.fillText('2018–2022', 20 * scaleX + offsetX, 450 * scaleY + offsetY);
+                    ctx.fillText('Mid Career', 20 * scaleX + offsetX, 470 * scaleY + offsetY);
+                    ctx.fillText('2023–Present', 20 * scaleX + offsetX, 150 * scaleY + offsetY);
+                    ctx.fillText('Current Role', 20 * scaleX + offsetX, 170 * scaleY + offsetY);
+
+                    ctx.fillStyle = 'rgba(60, 60, 80, 0.6)';
+                    ctx.fillRect(offsetX, 850 * scaleY + offsetY, designWidth * scaleX, 200 * scaleY);
+                    ctx.fillStyle = '#3A3A4A';
+                    ctx.fillRect(offsetX, 850 * scaleY + offsetY, designWidth * scaleX, 200 * scaleY);
+                    for (let y = 890 * scaleY; y <= 950 * scaleY; y += 30 * scaleY) {
+                        ctx.fillStyle = '#2A2A3A';
+                        ctx.fillRect(offsetX, y + offsetY - 6 * scaleY, designWidth * scaleX, 3 * scaleY);
+                        ctx.fillStyle = '#FFC107';
+                        ctx.fillRect(offsetX, y + offsetY - 3 * scaleY, designWidth * scaleX, 3 * scaleY);
+                    }
+                    undergroundTrains.forEach(drawUndergroundTrain);
+                    undergroundSigns.forEach(drawSign);
+                    for (let x = 60 * scaleX; x < designWidth * scaleX; x += 120 * scaleX) {
+                        ctx.fillStyle = '#FFFFE0';
+                        ctx.beginPath();
+                        ctx.arc(x + offsetX, 870 * scaleY + offsetY, 6 * scaleX, 0, Math.PI * 2);
+                        ctx.fill();
                     }
 
+                    ctx.font = `${22 * scaleX}px Inter`;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText(`XP: ${xp}/100`, 20 * scaleX + offsetX, 30 * scaleY + offsetY);
+
                     const progressFill = document.getElementById('progress-fill');
-                    const progressPercent = Math.min(xp, 100);
+                    const progressPercent = (visited.size / (locations.length - 1)) * 100;
                     progressFill.style.width = `${progressPercent}%`;
 
-                    if (nearestLoc && minDistance < 60 * scaleX) {
+                    if (nearestLoc && minDistance < 120 * scaleX) {
                         tooltip.style.display = 'block';
                         tooltip.textContent = nearestLoc.tooltip;
-                        tooltip.style.left = `${(nearestLoc.x + nearestLoc.width / 2) * dpr}px`;
-                        tooltip.style.top = `${(nearestLoc.groundY - nearestLoc.height - 20 * scaleY) * dpr}px`;
+                        tooltip.style.left = `${(nearestLoc.x + offsetX + nearestLoc.width + 12 * scaleX) / scaleX}px`;
+                        tooltip.style.top = `${(nearestLoc.groundY - nearestLoc.height + offsetY) / scaleY}px`;
                     } else {
                         tooltip.style.display = 'none';
                     }
 
-                    // Draw signs last to ensure they are on top
-                    signs.forEach(drawSign);
+                    if (playerImage.complete && playerImage.naturalHeight !== 0) {
+                        ctx.drawImage(playerImage, player.x + offsetX, player.y + offsetY, player.width, player.height);
+                    } else {
+                        ctx.fillStyle = '#FFDAB9';
+                        ctx.fillRect(player.x + offsetX + 8 * scaleX, player.y + offsetY + 8 * scaleY, 16 * scaleX, 16 * scaleY);
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(player.x + offsetX + 8 * scaleX, player.y + offsetY + 8 * scaleY, 16 * scaleX, 8 * scaleY);
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(player.x + offsetX + 8 * scaleX, player.y + offsetY + 24 * scaleY, 16 * scaleX, 24 * scaleY);
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(player.x + offsetX + 12 * scaleX, player.y + offsetY + 24 * scaleY, 8 * scaleX, 16 * scaleY);
+                        ctx.fillStyle = '#00DDEB';
+                        ctx.fillRect(player.x + offsetX + 14 * scaleX, player.y + offsetY + 32 * scaleY, 4 * scaleX, 8 * scaleY);
+                    }
 
                     requestAnimationFrame(update);
                 } catch (error) {
                     console.error('Error in update loop:', error);
+                    alert('An error occurred in the game loop. Please check the console for details.');
                 }
             }
 
-            update();
+            function checkInteraction() {
+                locations.forEach(loc => {
+                    if (loc.locked && !achievementsUnlocked) return;
+                    const dx = player.x + player.width / 2 - (loc.x + loc.width / 2);
+                    const dy = player.y + player.height / 2 - (loc.groundY - loc.height / 2);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 60 * scaleX) {
+                        const popup = document.getElementById(loc.id + '-popup');
+                        if (popup) {
+                            popup.classList.add('active');
+                        } else {
+                            console.error(`Popup for ${loc.id} not found`);
+                        }
+                    }
+                });
+            }
+
+            if (gameContainer.clientWidth > 0 && gameContainer.clientHeight > 0) {
+                update();
+            } else {
+                setTimeout(() => {
+                    if (gameContainer.clientWidth > 0 && gameContainer.clientHeight > 0) {
+                        update();
+                    } else {
+                        console.error('Game container has invalid dimensions:', gameContainer.clientWidth, gameContainer.clientHeight);
+                        alert('Unable to initialize game due to invalid container dimensions.');
+                    }
+                }, 1000);
+            }
         });
     </script>
 </body>
