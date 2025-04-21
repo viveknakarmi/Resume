@@ -60,9 +60,9 @@
         }
         #game-container {
             position: relative;
-            width: calc(100vw - 20px);
-            height: calc(90vh - 20px);
-            margin: 10px;
+            width: 100vw;
+            height: 85vh;
+            margin: 0;
             border: 2px solid #00DDEB;
             border-radius: 8px;
             overflow: hidden;
@@ -91,7 +91,7 @@
             width: 85vw;
             max-width: 400px;
             min-height: 200px;
-            max-height: 70vh;
+            max-height: 60vh;
             overflow-y: auto;
             z-index: 10;
             box-shadow: 0 0 20px rgba(0, 221, 235, 0.5);
@@ -227,7 +227,7 @@
         }
         .controls {
             position: fixed;
-            bottom: 15px;
+            bottom: 10px;
             width: 100vw;
             display: flex;
             justify-content: space-between;
@@ -240,8 +240,8 @@
             color: #14141E;
             border: none;
             border-radius: 8px;
-            padding: 12px;
-            font-size: 1.2rem;
+            padding: 15px;
+            font-size: 1.5rem;
             cursor: pointer;
             opacity: 0.8;
             touch-action: manipulation;
@@ -252,7 +252,7 @@
         }
         .left-right {
             display: flex;
-            gap: 15px;
+            gap: 20px;
         }
         @media (min-width: 768px) {
             .controls {
@@ -263,6 +263,11 @@
             }
             .instructions-mobile {
                 display: none;
+            }
+            #game-container {
+                width: calc(100vw - 20px);
+                height: calc(90vh - 20px);
+                margin: 10px;
             }
         }
         @media (max-width: 767px) {
@@ -276,17 +281,25 @@
                 color: #A3BFFA;
                 display: block;
                 position: absolute;
-                bottom: 5px;
+                bottom: 70px;
                 width: 100%;
             }
             #game-container {
-                height: calc(85vh - 20px);
+                height: 75vh;
             }
             .popup h2 {
                 font-size: 1.6rem;
             }
             .popup p, .popup li {
                 font-size: 0.95rem;
+            }
+            .tooltip {
+                font-size: 0.8rem;
+                padding: 0.3rem;
+            }
+            .progress-bar {
+                width: 100px;
+                height: 10px;
             }
         }
     </style>
@@ -397,12 +410,13 @@
             const baseHeight = 1000;
             let scaleX = canvas.width / dpr / baseWidth || 1;
             let scaleY = canvas.height / dpr / baseHeight || 1;
-            const scaleFactor = Math.min(scaleX, scaleY) * 1;
+            const scaleFactor = Math.min(scaleX, scaleY);
             scaleX = scaleFactor;
             scaleY = scaleFactor;
-            if (window.innerWidth <= 767) {
-                scaleX *= 1;
-                scaleY *= 1;
+            const isMobile = window.innerWidth <= 767;
+            if (isMobile) {
+                scaleX *= 1.2;
+                scaleY *= 1.2;
             }
 
             console.log('ScaleX:', scaleX, 'ScaleY:', scaleY);
@@ -410,11 +424,11 @@
             const player = {
                 x: 150 * scaleX,
                 y: 826 * scaleY,
-                width: 32 * scaleX * (window.innerWidth <= 767 ? 1.5 : 1),
-                height: 48 * scaleY * (window.innerWidth <= 767 ? 1.5 : 1),
-                speed: 4 * scaleX * (window.innerWidth <= 767 ? 1.2 : 1),
+                width: 32 * scaleX * (isMobile ? 1.5 : 1),
+                height: 48 * scaleY * (isMobile ? 1.5 : 1),
+                speed: 4 * scaleX * (isMobile ? 1.2 : 1),
                 vy: 0,
-                jumpPower: -16 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1),
+                jumpPower: -16 * scaleY * (isMobile ? 1.3 : 1),
                 gravity: 0.6 * scaleY,
                 grounded: true
             };
@@ -478,24 +492,20 @@
                 popupsContainer.appendChild(popup);
             });
 
-            const labelOffset = 20 * scaleY; // Distance above the building top
+            const labelOffset = 20 * scaleY;
 
             const signs = [
-                // Bottom layer workplaces
-                { x: 200 * scaleX, y: (850 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Intern at Cerno' }, // Top at 778 * scaleY
-                { x: 663 * scaleX, y: (850 * scaleY - 84 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Intern Accountant' }, // Top at 766 * scaleY
-                { x: 1126 * scaleX, y: (850 * scaleY - 96 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer RASHAYS' }, // Top at 754 * scaleY
-                // Middle layer workplaces
-                { x: 1126 * scaleX, y: (550 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer Consortio' }, // Top at 478 * scaleY
-                { x: 663 * scaleX, y: (550 * scaleY - 84 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Team Leader' }, // Top at 466 * scaleY
-                { x: 200 * scaleX, y: (550 * scaleY - 96 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Manager' }, // Top at 454 * scaleY
-                // Top layer workplace
-                { x: 795 * scaleX, y: (250 * scaleY - 120 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Data Manager' }, // Top at 130 * scaleY
-                // Icons
-                { x: 1650 * scaleX, y: (850 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Hobbies' }, // Top at 778 * scaleY
-                { x: 1650 * scaleX, y: (650 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Education' }, // Top at 578 * scaleY
-                { x: 1650 * scaleX, y: (450 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Skills' }, // Top at 378 * scaleY
-                { x: 1650 * scaleX, y: (250 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Projects' } // Top at 178 * scaleY
+                { x: 200 * scaleX, y: (850 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Intern at Cerno' },
+                { x: 663 * scaleX, y: (850 * scaleY - 84 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Intern Accountant' },
+                { x: 1126 * scaleX, y: (850 * scaleY - 96 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer RASHAYS' },
+                { x: 1126 * scaleX, y: (550 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Officer Consortio' },
+                { x: 663 * scaleX, y: (550 * scaleY - 84 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Team Leader' },
+                { x: 200 * scaleX, y: (550 * scaleY - 96 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Payroll Manager' },
+                { x: 795 * scaleX, y: (250 * scaleY - 120 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Data Manager' },
+                { x: 1650 * scaleX, y: (850 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Hobbies' },
+                { x: 1650 * scaleX, y: (650 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Education' },
+                { x: 1650 * scaleX, y: (450 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Skills' },
+                { x: 1650 * scaleX, y: (250 * scaleY - 72 * scaleY - labelOffset), width: 20 * scaleX, height: 10 * scaleY, label: 'Projects' }
             ];
 
             const lane1Y = 990 * scaleY;
@@ -631,8 +641,8 @@
 
                     const rows = height >= 80 * scaleY ? 8 : 6;
                     const cols = 4;
-                    const windowWidth = 8 * scaleX * (window.innerWidth <= 767 ? 1.3 : 1);
-                    const windowHeight = 6 * scaleY * (window.innerWidth <= 767 ? 1.3 : 1);
+                    const windowWidth = 8 * scaleX * (isMobile ? 1.3 : 1);
+                    const windowHeight = 6 * scaleY * (isMobile ? 1.3 : 1);
                     let offsetY = height >= 80 * scaleY ? 20 * scaleY : 16 * scaleY;
                     if (loc.id === 'intern-cerno') offsetY = 18 * scaleY;
                     if (loc.id === 'payroll-officer-consortio') offsetY = 14 * scaleY;
@@ -953,20 +963,21 @@
                 try {
                     console.log('Drawing sign:', sign.label, 'at x:', sign.x, 'y:', sign.y);
                     ctx.save();
-                    ctx.font = `${14 * scaleX}px 'Inter', sans-serif`;
+                    const fontSize = isMobile ? 18 * scaleX : 14 * scaleX;
+                    ctx.font = `${fontSize}px 'Inter', sans-serif`;
                     const textMetrics = ctx.measureText(sign.label);
                     const textWidth = textMetrics.width;
-                    const textHeight = 14 * scaleY;
-                    ctx.fillStyle = 'rgba(20, 20, 30, 0.8)';
+                    const textHeight = fontSize;
+                    ctx.fillStyle = 'rgba(20, 20, 30, 0.9)';
                     ctx.fillRect(
-                        sign.x,
-                        sign.y - textHeight,
-                        textWidth + 4 * scaleX,
-                        textHeight + 2 * scaleY
+                        sign.x - 2 * scaleX,
+                        sign.y - textHeight - 2 * scaleY,
+                        textWidth + 8 * scaleX,
+                        textHeight + 4 * scaleY
                     );
                     ctx.fillStyle = '#FFFFFF';
                     ctx.globalAlpha = Math.sin(Date.now() / 500) * 0.3 + 0.7;
-                    ctx.fillText(sign.label, sign.x + 2 * scaleX, sign.y + 1 * scaleY);
+                    ctx.fillText(sign.label, sign.x + 2 * scaleX, sign.y);
                     ctx.globalAlpha = 1;
                     ctx.restore();
                 } catch (error) {
@@ -1308,7 +1319,6 @@
                         tooltip.style.display = 'none';
                     }
 
-                    // Draw signs last to ensure they are on top
                     signs.forEach(drawSign);
 
                     requestAnimationFrame(update);
